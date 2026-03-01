@@ -118,7 +118,45 @@ const AiAssistant: React.FC<Props> = ({ onClose, isDark }) => {
             setResponseMsg(aiData.reply || 'Parcours généré !');
             setRouteType(aiData.routeType);
 
-            if (aiData.type === 'loop') {
+            if (aiData.type === 'point-to-point') {
+                if (!aiData.poi) {
+                    throw new Error("Désolé, je n'ai pas pu identifier la destination de ton parcours.");
+                }
+
+                let destinationPosition: [number, number] | undefined = undefined;
+
+                // Try segment database first
+                const knownSegment = findSegmentByName(aiData.poi);
+                if (knownSegment) {
+                    destinationPosition = knownSegment.coordinates;
+                    setResponseMsg(`${aiData.reply} (Cible : ${knownSegment.name})`);
+                } else {
+                    try {
+                        const results = await searchAddress(aiData.poi);
+                        if (results.length > 0) {
+                            destinationPosition = [results[0].lng, results[0].lat];
+                            setResponseMsg(`${aiData.reply} (Cible : ${results[0].shortName})`);
+                        }
+                    } catch (err) {
+                        console.error("Geocoding failed for POI:", err);
+                    }
+                }
+
+                if (!destinationPosition) {
+                    throw new Error(`Je n'ai pas trouvé de lieu nommé "${aiData.poi}" sur la carte.`);
+                }
+
+                const finalWaypoints: [number, number][] = [departure as [number, number], destinationPosition];
+                const resultData = await getRouteData(finalWaypoints, aiData.routeType, aiData.avoidHighways, aiData.elevation);
+
+                const store = useRouteStore.getState();
+                store.clearRoute();
+                store.setPointA(finalWaypoints[0]);
+                store.setPointB(finalWaypoints[1]);
+                store.setRouteName(aiData.poi);
+
+                await commitRouteData(resultData);
+            } else if (aiData.type === 'loop') {
                 clearRoute();
 
                 let poiPosition: [number, number] | undefined = undefined;
@@ -130,7 +168,7 @@ const AiAssistant: React.FC<Props> = ({ onClose, isDark }) => {
                     // On cherche à la distance cible / 2 (le point le plus éloigné de la boucle)
                     const midPoint = computeDestination(departure, bearing, aiData.distanceKm / 2.5);
                     const amenityResult = await fetchNearestAmenity(midPoint, aiData.amenity, 15000); // 15km rayon
-                    
+
                     if (amenityResult) {
                         poiPosition = [amenityResult.position[0], amenityResult.position[1]];
                         setResponseMsg(`${aiData.reply} (Étape : ${amenityResult.name} sélectionné)`);
@@ -172,12 +210,12 @@ const AiAssistant: React.FC<Props> = ({ onClose, isDark }) => {
                 if (resultData.summary.length > aiData.distanceKm * 1.4 && finalWaypoints.length > 3) {
                     console.warn(`[AI CHECK] Anomalie détectée : ${Math.round(resultData.summary.length)}km générés au lieu de ${aiData.distanceKm}km. Tentative de correction...`);
                     setResponseMsg((prev) => prev + " (Correction du tracé...)");
-                    
+
                     // On supprime un point intermédiaire généré géométriquement (pour libérer le routeur)
                     // On laisse le départ, l'arrivée, et on enlève le point du milieu
                     const midIndex = Math.floor(finalWaypoints.length / 2);
                     finalWaypoints = finalWaypoints.filter((_, i) => i !== midIndex);
-                    
+
                     // Recalcul avec le point limitant en moins
                     resultData = await getRouteData(finalWaypoints, aiData.routeType, aiData.avoidHighways, aiData.elevation);
                 }
@@ -189,7 +227,7 @@ const AiAssistant: React.FC<Props> = ({ onClose, isDark }) => {
 
                 await commitRouteData(resultData);
             } else {
-                setResponseMsg("Mode Point-A à Point-B en cours de développement, boucle générée par défaut.");
+                throw new Error("Type de parcours non supporté par l'IA.");
             }
 
             setTimeout(onClose, 4000);

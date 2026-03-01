@@ -319,6 +319,33 @@ const BottomSheet: React.FC = () => {
                                 </motion.div>
                             )}
                         </AnimatePresence>
+
+                        {/* Maneuvers List (TBT) */}
+                        <AnimatePresence>
+                            {maneuvers.length > 0 && (
+                                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mb-4">
+                                    <p className={`text-[10px] uppercase font-black tracking-widest ${subtle} mb-3 ml-1`}>Feuille de route</p>
+                                    <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                                        {maneuvers.map((m, i) => (
+                                            <div key={i} className={`${cardBg} p-3 flex items-start gap-3`}>
+                                                <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 border-2 border-slate-800 flex items-center justify-center flex-shrink-0 text-lg">
+                                                    {i === 0 ? '🚩' : i === maneuvers.length - 1 ? '🏁' : '↪️'}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-bold leading-snug">{m.instruction}</p>
+                                                    <div className={`flex items-center gap-2 mt-1 text-[10px] uppercase font-black ${subtle}`}>
+                                                        <span>{formatDistance(m.length)}</span>
+                                                        <span className="opacity-40">•</span>
+                                                        <span>{formatDuration(m.time)}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
                         <div className={`h-[3px] ${divider} mb-4`} />
                     </div>
                 </motion.div>
