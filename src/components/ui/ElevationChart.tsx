@@ -132,7 +132,7 @@ const ElevationChart: React.FC<Props> = ({ profile, isDark }) => {
                 stroke={gridColor} strokeWidth={1}
             />
 
-            {/* Hover Guide */}
+            {/* Hover Guide & Tooltip */}
             {localHoverIdx !== null && (
                 <g>
                     <line
@@ -144,6 +144,33 @@ const ElevationChart: React.FC<Props> = ({ profile, isDark }) => {
                         strokeWidth={1}
                         strokeDasharray="4 2"
                     />
+
+                    {/* Tooltip Background */}
+                    <rect
+                        x={Math.max(0, Math.min(WIDTH - 70, PADDING.left + (localHoverIdx / (samples.length - 1)) * chartW - 35))}
+                        y={0}
+                        width={70}
+                        height={24}
+                        fill={isDark ? '#1e293b' : '#fff'}
+                        stroke={lineColor}
+                        strokeWidth={2}
+                        rx={4}
+                    />
+
+                    {/* Tooltip Text */}
+                    <text
+                        x={Math.max(35, Math.min(WIDTH - 35, PADDING.left + (localHoverIdx / (samples.length - 1)) * chartW))}
+                        y={15}
+                        textAnchor="middle"
+                        fontSize={9}
+                        fontWeight="900"
+                        fill={isDark ? '#fff' : '#1e293b'}
+                        fontFamily="Inter, sans-serif"
+                    >
+                        {Math.round(samples[localHoverIdx])}m
+                        {localHoverIdx > 0 && ` (${Math.round(((samples[localHoverIdx] - samples[localHoverIdx - 1]) / 50) * 100)}%)`}
+                    </text>
+
                     <circle
                         cx={PADDING.left + (localHoverIdx / (samples.length - 1)) * chartW}
                         cy={PADDING.top + chartH - ((samples[localHoverIdx] - minElevation) / range) * chartH}

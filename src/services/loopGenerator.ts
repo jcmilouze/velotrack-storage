@@ -117,13 +117,15 @@ export const buildLoopWaypoints = (options: LoopOptions): Position[] => {
         keyPoints.push(poi);
     } else {
         directions.forEach((dir) => {
-            const bearing = COMPASS_DIRECTIONS[dir];
+            const jitter = (Math.random() - 0.5) * 10; // +/- 5 deg jitter for variety
+            const bearing = COMPASS_DIRECTIONS[dir] + jitter;
+
             if (numDirs === 1) {
                 // Adjust loop geometry based on elevation preference
                 // Flat: very narrow loop to increase chances of staying in a single valley (15deg)
                 // Mountain: wide loop to force crossing different valleys and ridges (50deg)
                 const spread = elevation === 'flat' ? 15 : elevation === 'mountain' ? 50 : 35;
-                
+
                 keyPoints.push(computeDestination(departure, bearing + spread, legDist * 0.8));
                 keyPoints.push(computeDestination(departure, bearing, legDist));
                 keyPoints.push(computeDestination(departure, bearing - spread, legDist * 0.8));
