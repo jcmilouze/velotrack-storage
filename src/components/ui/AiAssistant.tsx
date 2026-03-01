@@ -30,6 +30,8 @@ const AiAssistant: React.FC<Props> = ({ onClose, isDark }) => {
     const [prompt, setPrompt] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [responseMsg, setResponseMsg] = useState('');
+    const [isWaitingForStart, setIsWaitingForStart] = useState(false);
+    const [pendingPrompt, setPendingPrompt] = useState('');
     const inputRef = useRef<HTMLInputElement>(null);
     const { waypoints, clearRoute, setRouteType } = useRouteStore();
     const { mapRef } = useMapContext();
@@ -43,18 +45,37 @@ const AiAssistant: React.FC<Props> = ({ onClose, isDark }) => {
         setTimeout(() => inputRef.current?.focus(), 100);
     }, []);
 
+    // Watch for start point creation if we were waiting for it
+    useEffect(() => {
+        if (isWaitingForStart && waypoints.length > 0) {
+            setIsWaitingForStart(false);
+            const savedPrompt = pendingPrompt;
+            setPendingPrompt('');
+            processRequest(savedPrompt);
+        }
+    }, [waypoints.length, isWaitingForStart, pendingPrompt]);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!prompt.trim() || !WEBHOOK_URL) return;
+        await processRequest(prompt);
+    };
 
+    const processRequest = async (userPrompt: string) => {
         setIsLoading(true);
         setResponseMsg('');
 
         try {
-            // Get center
-            const map = mapRef.current;
-            const center = map ? map.getCenter() : { lat: 0, lng: 0 };
-            const departure = waypoints[0]?.position ?? [center.lng, center.lat] as [number, number];
+            // Check if we have a starting point
+            if (waypoints.length === 0) {
+                setPendingPrompt(userPrompt);
+                setIsWaitingForStart(true);
+                setResponseMsg("Super ! Indique-moi maintenant ton point de départ sur la carte (clic long ou clic droit).");
+                setIsLoading(false);
+                return;
+            }
+
+            const departure = waypoints[0].position;
 
             // Fetch weather for the starting point
             const weather = await fetchWeather(departure[1], departure[0]);
@@ -66,7 +87,7 @@ const AiAssistant: React.FC<Props> = ({ onClose, isDark }) => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    prompt,
+                    prompt: userPrompt,
                     lat: departure[1],
                     lng: departure[0],
                     currentWeather: weatherContext
@@ -149,12 +170,12 @@ const AiAssistant: React.FC<Props> = ({ onClose, isDark }) => {
     return (
         <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-md p-4"
+            className={`absolute inset-0 z-50 flex items-center justify-center p-4 transition-colors ${isWaitingForStart ? 'bg-black/20 pointer-events-none' : 'bg-black/50 backdrop-blur-md'}`}
             onClick={(e) => e.target === e.currentTarget && onClose()}
         >
             <motion.div
                 initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
-                className={`${brutalModal} w-full max-w-lg p-6 flex flex-col`}
+                className={`${brutalModal} w-full max-w-lg p-6 flex flex-col pointer-events-auto`}
             >
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
