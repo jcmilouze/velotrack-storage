@@ -170,6 +170,51 @@ const parseOSRMResponse = (data: any) => {
 
 // ─── Public API ───────────────────────────────────────────────────────────
 
+export const getRouteData = async (
+    waypoints: Position[],
+    routeType: RouteType = 'road',
+    avoidHighways: boolean = false,
+    elevation?: 'flat' | 'hilly' | 'mountain'
+) => {
+    try {
+        const data = await fetchFromValhalla(waypoints, routeType, avoidHighways, elevation);
+        return parseValhallaResponse(data);
+    } catch (err) {
+        console.warn('Valhalla failed, trying OSRM...', err);
+        const data = await fetchFromOSRM(waypoints);
+        return parseOSRMResponse(data);
+    }
+};
+
+export const commitRouteData = async (result: any) => {
+    const store = useRouteStore.getState();
+    
+    store.setRouteGeometry(result.routeGeometry);
+    store.setRouteSummary(result.summary);
+    store.setManeuvers(result.maneuvers);
+    store.setRouteCoordinates(result.coordinates);
+    store.setIsBottomSheetOpen(true);
+
+    // Snap markers to the road if Valhalla/OSRM returns distinct snapped locations
+    if (result.snappedLocations) {
+        const currentWaypoints = store.waypoints;
+        result.snappedLocations.forEach((snappedPos: [number, number], i: number) => {
+            const currentWp = currentWaypoints[i];
+            if (currentWp) {
+                const dx = Math.abs(currentWp.position[0] - snappedPos[0]);
+                const dy = Math.abs(currentWp.position[1] - snappedPos[1]);
+                // Only update if difference > ~1 meter to avoid infinite update loops
+                if (dx > 0.00001 || dy > 0.00001) {
+                    store.updateWaypointPosition(currentWp.id, snappedPos);
+                }
+            }
+        });
+    }
+
+    const profile = await fetchElevationProfile(result.coordinates);
+    if (profile) store.setElevationProfile(profile);
+};
+
 export const calculateRoute = async (
     waypoints: Position[],
     routeType: RouteType = 'road',
@@ -186,41 +231,9 @@ export const calculateRoute = async (
     store.setElevationProfile(null);
 
     try {
-        let result;
-        try {
-            const data = await fetchFromValhalla(waypoints, routeType, avoid, elevation);
-            result = parseValhallaResponse(data);
-        } catch (err) {
-            console.warn('Valhalla failed, trying OSRM...', err);
-            const data = await fetchFromOSRM(waypoints);
-            result = parseOSRMResponse(data);
-        }
+        const result = await getRouteData(waypoints, routeType, avoid, elevation);
+        await commitRouteData(result);
 
-        store.setRouteGeometry(result.routeGeometry);
-        store.setRouteSummary(result.summary);
-        store.setManeuvers(result.maneuvers);
-        store.setRouteCoordinates(result.coordinates);
-        store.setIsBottomSheetOpen(true);
-
-        // Snap markers to the road if Valhalla/OSRM returns distinct snapped locations
-        if (result.snappedLocations) {
-            const currentWaypoints = store.waypoints;
-            result.snappedLocations.forEach((snappedPos: [number, number], i: number) => {
-                const currentWp = currentWaypoints[i];
-                if (currentWp) {
-                    const dx = Math.abs(currentWp.position[0] - snappedPos[0]);
-                    const dy = Math.abs(currentWp.position[1] - snappedPos[1]);
-                    // Only update if difference > ~1 meter to avoid infinite update loops
-                    if (dx > 0.00001 || dy > 0.00001) {
-                        store.updateWaypointPosition(currentWp.id, snappedPos);
-                    }
-                }
-            });
-        }
-
-        fetchElevationProfile(result.coordinates).then((profile) => {
-            if (profile) store.setElevationProfile(profile);
-        });
 
     } catch (error) {
         store.setError(error instanceof Error ? error.message : 'Erreur de calcul d\'itinéraire');

@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Sparkles, Send, X, Loader2 } from 'lucide-react';
 import { useRouteStore } from '../../store/useRouteStore';
 import { buildLoopWaypoints, computeDestination, COMPASS_DIRECTIONS, type CompassDirection } from '../../services/loopGenerator';
-import { calculateRoute } from '../../services/routingService';
+import { getRouteData, commitRouteData } from '../../services/routingService';
 import { searchAddress } from '../../services/geocodingService';
 import { fetchWeather, getWeatherDescription } from '../../services/weatherService';
 import { findSegmentByName } from '../../services/segmentService';
@@ -156,7 +156,7 @@ const AiAssistant: React.FC<Props> = ({ onClose, isDark }) => {
                     }
                 }
 
-                const loopWaypoints = buildLoopWaypoints({
+                let finalWaypoints = buildLoopWaypoints({
                     departure,
                     targetDistanceKm: aiData.distanceKm || 50,
                     directions: aiData.directions?.length ? aiData.directions : ['N'],
@@ -164,12 +164,30 @@ const AiAssistant: React.FC<Props> = ({ onClose, isDark }) => {
                     elevation: aiData.elevation
                 });
 
-                const store = useRouteStore.getState();
-                store.setPointA(loopWaypoints[0]);
-                loopWaypoints.slice(1, -1).forEach((pos, i) => store.addWaypoint(pos, `Étape ${i + 1}`));
-                store.addWaypoint(loopWaypoints[loopWaypoints.length - 1], 'Retour départ');
+                let resultData = await getRouteData(finalWaypoints, aiData.routeType, aiData.avoidHighways, aiData.elevation);
 
-                await calculateRoute(loopWaypoints, aiData.routeType, aiData.avoidHighways, aiData.elevation);
+                // --- SANITY CHECK : Auto-Correction des Détours ---
+                // Si le routeur s'est perdu à cause d'un point tombé derrière une montage/rivière, 
+                // la route sera affreusement longue (ex: 90km au lieu de 40).
+                if (resultData.summary.length > aiData.distanceKm * 1.4 && finalWaypoints.length > 3) {
+                    console.warn(`[AI CHECK] Anomalie détectée : ${Math.round(resultData.summary.length)}km générés au lieu de ${aiData.distanceKm}km. Tentative de correction...`);
+                    setResponseMsg((prev) => prev + " (Correction du tracé...)");
+                    
+                    // On supprime un point intermédiaire généré géométriquement (pour libérer le routeur)
+                    // On laisse le départ, l'arrivée, et on enlève le point du milieu
+                    const midIndex = Math.floor(finalWaypoints.length / 2);
+                    finalWaypoints = finalWaypoints.filter((_, i) => i !== midIndex);
+                    
+                    // Recalcul avec le point limitant en moins
+                    resultData = await getRouteData(finalWaypoints, aiData.routeType, aiData.avoidHighways, aiData.elevation);
+                }
+
+                const store = useRouteStore.getState();
+                store.setPointA(finalWaypoints[0]);
+                finalWaypoints.slice(1, -1).forEach((pos, i) => store.addWaypoint(pos, `Étape ${i + 1}`));
+                store.addWaypoint(finalWaypoints[finalWaypoints.length - 1], 'Retour départ');
+
+                await commitRouteData(resultData);
             } else {
                 setResponseMsg("Mode Point-A à Point-B en cours de développement, boucle générée par défaut.");
             }
