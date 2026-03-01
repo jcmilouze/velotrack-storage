@@ -196,31 +196,53 @@ const BottomSheet: React.FC = () => {
                             </div>
                         )}
 
-                        {/* Stats grid */}
+                        {/* Bento Stats Grid */}
                         {routeSummary && (
-                            <div className="grid grid-cols-4 gap-2 mb-3">
-                                <div className={`${cardBg} p-2 flex flex-col items-center text-center`}>
-                                    <MapPin className="w-5 h-5 mb-1" />
-                                    <span className="font-bold text-sm leading-none">{formatDistance(routeSummary.length)}</span>
-                                    <span className={`text-[10px] uppercase font-bold mt-1 ${subtle}`}>Dist.</span>
+                            <div className="grid grid-cols-4 gap-2 mb-4">
+                                <div className={`${cardBg} col-span-2 p-3 flex flex-col justify-between`}>
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <MapPin className="w-4 h-4 text-brand-primary" />
+                                        <span className={`text-[10px] uppercase font-black tracking-widest ${subtle}`}>Distance</span>
+                                    </div>
+                                    <span className="font-black text-2xl leading-none">{formatDistance(routeSummary.length)}</span>
                                 </div>
-                                <div className={`${cardBg} p-2 flex flex-col items-center text-center`}>
-                                    <Clock className="w-5 h-5 mb-1" />
-                                    <span className="font-bold text-sm leading-none">{formatDuration(routeSummary.time)}</span>
-                                    <span className={`text-[10px] uppercase font-bold mt-1 ${subtle}`}>Temps</span>
+
+                                <div className={`${cardBg} col-span-2 p-3 flex flex-col justify-between`}>
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <Clock className="w-4 h-4 text-blue-500" />
+                                        <span className={`text-[10px] uppercase font-black tracking-widest ${subtle}`}>Temps Est.</span>
+                                    </div>
+                                    <span className="font-black text-2xl leading-none">{formatDuration(routeSummary.time)}</span>
                                 </div>
+
+                                {elevationProfile && (
+                                    <>
+                                        <div className={`${cardBg} col-span-1 p-2 flex flex-col items-center justify-center text-center`}>
+                                            <ArrowUpCircle className="w-5 h-5 mb-1 text-emerald-500" />
+                                            <span className="font-bold text-sm leading-none">{elevationProfile.ascent}m</span>
+                                            <span className={`text-[8px] uppercase font-bold mt-1 ${subtle}`}>D+</span>
+                                        </div>
+                                        <div className={`${cardBg} col-span-1 p-2 flex flex-col items-center justify-center text-center`}>
+                                            <ArrowDownCircle className="w-5 h-5 mb-1 text-orange-500" />
+                                            <span className="font-bold text-sm leading-none">{elevationProfile.descent}m</span>
+                                            <span className={`text-[8px] uppercase font-bold mt-1 ${subtle}`}>D-</span>
+                                        </div>
+                                    </>
+                                )}
+
                                 {kcal && (
-                                    <div className={`${cardBg} p-2 flex flex-col items-center text-center`}>
+                                    <div className={`${cardBg} col-span-1 p-2 flex flex-col items-center justify-center text-center`}>
                                         <Flame className="w-5 h-5 mb-1 text-orange-500" />
                                         <span className="font-bold text-sm leading-none">{kcal}</span>
-                                        <span className={`text-[10px] uppercase font-bold mt-1 ${subtle}`}>Kcal</span>
+                                        <span className={`text-[8px] uppercase font-bold mt-1 ${subtle}`}>Kcal</span>
                                     </div>
                                 )}
+
                                 {vam && (
-                                    <div className={`${cardBg} p-2 flex flex-col items-center text-center`}>
+                                    <div className={`${cardBg} col-span-1 p-2 flex flex-col items-center justify-center text-center`}>
                                         <ArrowUpCircle className="w-5 h-5 mb-1 text-emerald-500" />
                                         <span className="font-bold text-sm leading-none">{vam}</span>
-                                        <span className={`text-[10px] uppercase font-bold mt-1 ${subtle}`}>VAM</span>
+                                        <span className={`text-[8px] uppercase font-bold mt-1 ${subtle}`}>VAM</span>
                                     </div>
                                 )}
                             </div>
@@ -265,22 +287,18 @@ const BottomSheet: React.FC = () => {
                             </motion.button>
                         )}
 
-                        {/* Elevation */}
+                        {/* Elevation Chart Section */}
                         <AnimatePresence>
                             {elevationProfile && (
                                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mb-3">
-                                    <div className="flex gap-2 mb-2">
-                                        <div className={`${cardBg} flex-1 px-3 py-2 flex items-center gap-2`}>
-                                            <ArrowUpCircle className="w-5 h-5 text-emerald-500 flex-shrink-0" />
-                                            <div><p className="font-bold text-sm leading-none">{elevationProfile.ascent} m</p><p className={`text-[10px] uppercase font-bold ${subtle}`}>D+ </p></div>
+                                    <div className={`${cardBg} p-3 overflow-hidden`}>
+                                        <div className="flex items-center justify-between mb-4">
+                                            <p className={`text-[10px] uppercase font-black tracking-widest ${subtle}`}>Profil Altimétrique</p>
+                                            <div className="flex gap-3">
+                                                <span className="text-xs font-black">Min: {elevationProfile.minElevation}m</span>
+                                                <span className="text-xs font-black">Max: {elevationProfile.maxElevation}m</span>
+                                            </div>
                                         </div>
-                                        <div className={`${cardBg} flex-1 px-3 py-2 flex items-center gap-2`}>
-                                            <ArrowDownCircle className="w-5 h-5 text-orange-500 flex-shrink-0" />
-                                            <div><p className="font-bold text-sm leading-none">{elevationProfile.descent} m</p><p className={`text-[10px] uppercase font-bold ${subtle}`}>D- </p></div>
-                                        </div>
-                                    </div>
-                                    <div className={`${cardBg} p-3`}>
-                                        <p className={`text-[10px] uppercase font-bold mb-2 ${subtle}`}>Profil Altimétrique</p>
                                         <ElevationChart profile={elevationProfile} isDark={isDark} />
                                     </div>
                                 </motion.div>
