@@ -86,6 +86,8 @@ export interface LoopOptions {
     targetDistanceKm: number;
     /** Compass directions for the outbound legs */
     directions: CompassDirection[];
+    /** Optional Point of Interest to pass through */
+    poi?: Position;
 }
 
 /**
@@ -94,34 +96,38 @@ export interface LoopOptions {
  * for the outbound and return legs, creating a "true loop".
  */
 export const buildLoopWaypoints = (options: LoopOptions): Position[] => {
-    const { departure, targetDistanceKm, directions } = options;
+    const { departure, targetDistanceKm, directions, poi } = options;
 
-    // We insert 1 intermediate point per direction.
-    // To maintain the target distance, we scale the leg distances.
     const numDirs = directions.length;
-
-    // Theoretical max distance reach from departure based on total distance
-    // For a single direction loop, it was 3.5. 
-    // If we have 3 directions (e.g. N -> E -> S), we are doing a larger arc.
     const reachFactor = numDirs === 1 ? 3.5 : numDirs === 2 ? 4.5 : 5.5;
     const legDist = targetDistanceKm / reachFactor;
 
     const keyPoints: Position[] = [];
 
-    directions.forEach((dir) => {
-        const bearing = COMPASS_DIRECTIONS[dir];
-        // If it's the only direction, add lateral points for a wider loop
-        if (numDirs === 1) {
-            keyPoints.push(computeDestination(departure, bearing + 40, legDist * 0.7));
-            keyPoints.push(computeDestination(departure, bearing, legDist));
-            keyPoints.push(computeDestination(departure, bearing - 40, legDist * 0.7));
-        } else {
-            // Sequential directions
-            keyPoints.push(computeDestination(departure, bearing, legDist));
+    // If POI is provided, we use it as a mandatory waypoint.
+    if (poi) {
+        // Validation: Verify if the POI is not further than the total distance
+        // Effectively, the distance to POI + distance back should be <= targetDistanceKm * 1.2 (small buffer)
+        const distToPoi = computeDistanceKm(departure, poi);
+        if (distToPoi * 2 > targetDistanceKm * 1.5) {
+            throw new Error(`Le lieu demandé est trop loin (${Math.round(distToPoi)}km) pour un parcours de ${targetDistanceKm}km.`);
         }
-    });
+        keyPoints.push(poi);
+    } else {
+        directions.forEach((dir) => {
+            const bearing = COMPASS_DIRECTIONS[dir];
+            if (numDirs === 1) {
+                keyPoints.push(computeDestination(departure, bearing + 40, legDist * 0.7));
+                keyPoints.push(computeDestination(departure, bearing, legDist));
+                keyPoints.push(computeDestination(departure, bearing - 40, legDist * 0.7));
+            } else {
+                keyPoints.push(computeDestination(departure, bearing, legDist));
+            }
+        });
+    }
 
     keyPoints.push(departure); // End the loop
+    // ... rest of logic remains
 
     const wps: Position[] = [departure];
     let currentPoint = departure;

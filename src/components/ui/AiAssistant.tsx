@@ -5,6 +5,8 @@ import { useRouteStore } from '../../store/useRouteStore';
 import { useMapContext } from '../../context/MapContext';
 import { buildLoopWaypoints, type CompassDirection } from '../../services/loopGenerator';
 import { calculateRoute } from '../../services/routingService';
+import { searchAddress } from '../../services/geocodingService';
+import { fetchWeather, getWeatherDescription } from '../../services/weatherService';
 
 interface Props {
     onClose: () => void;
@@ -18,6 +20,7 @@ interface AiResponse {
     routeType: 'road' | 'gravel';
     distanceKm: number;
     directions: CompassDirection[];
+    poi?: string | null;
     avoidHighways: boolean;
     reply: string;
 }
@@ -52,31 +55,57 @@ const AiAssistant: React.FC<Props> = ({ onClose, isDark }) => {
             const center = map ? map.getCenter() : { lat: 0, lng: 0 };
             const departure = waypoints[0]?.position ?? [center.lng, center.lat] as [number, number];
 
+            // Fetch weather for the starting point
+            const weather = await fetchWeather(departure[1], departure[0]);
+            const weatherContext = weather
+                ? `${getWeatherDescription(weather.weatherCode).label}, ${weather.temperature}°C, vent ${weather.windSpeed}km/h de direction ${weather.windDirection}°`
+                : "Non disponible";
+
             const res = await fetch(WEBHOOK_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     prompt,
                     lat: departure[1],
-                    lng: departure[0]
+                    lng: departure[0],
+                    currentWeather: weatherContext
                 })
             });
 
             if (!res.ok) throw new Error('Erreur de communication avec l\'IA');
 
             const data = await res.json();
-            // n8n should return strictly the JSON in data.response if using the provided workflow
             const aiData: AiResponse = typeof data.response === 'string' ? JSON.parse(data.response) : (data.response || data);
+
+            // 1. Validation de la réponse
+            if (!aiData.distanceKm || isNaN(aiData.distanceKm)) {
+                throw new Error("Désolé, je n'ai pas pu déterminer la distance du parcours.");
+            }
 
             setResponseMsg(aiData.reply || 'Parcours généré !');
             setRouteType(aiData.routeType);
 
             if (aiData.type === 'loop') {
                 clearRoute();
+
+                let poiPosition: [number, number] | undefined = undefined;
+                if (aiData.poi) {
+                    try {
+                        const results = await searchAddress(aiData.poi);
+                        if (results.length > 0) {
+                            poiPosition = [results[0].lng, results[0].lat];
+                            setResponseMsg(`${aiData.reply} (Trouvé: ${results[0].shortName})`);
+                        }
+                    } catch (err) {
+                        console.error("Geocoding failed for POI:", err);
+                    }
+                }
+
                 const loopWaypoints = buildLoopWaypoints({
                     departure,
                     targetDistanceKm: aiData.distanceKm || 50,
                     directions: aiData.directions?.length ? aiData.directions : ['N'],
+                    poi: poiPosition
                 });
 
                 const store = useRouteStore.getState();
@@ -89,11 +118,11 @@ const AiAssistant: React.FC<Props> = ({ onClose, isDark }) => {
                 setResponseMsg("Mode Point-A à Point-B en cours de développement, boucle générée par défaut.");
             }
 
-            setTimeout(onClose, 3000);
+            setTimeout(onClose, 4000);
 
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            setResponseMsg("Oups... l'IA est indisponible ou mal configurée.");
+            setResponseMsg(error.message || "Oups... l'IA est indisponible ou mal configurée.");
         } finally {
             setIsLoading(false);
         }
