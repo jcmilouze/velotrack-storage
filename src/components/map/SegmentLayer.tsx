@@ -32,6 +32,7 @@ const SegmentLayer: React.FC<SegmentLayerProps> = ({ map }) => {
                 justify-content: center;
                 cursor: pointer;
                 transition: transform 0.2s;
+                z-index: 10;
             `;
 
             const icon = document.createElement('div');
@@ -54,7 +55,10 @@ const SegmentLayer: React.FC<SegmentLayerProps> = ({ map }) => {
                     </div>
                 `);
 
-            const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
+            const marker = new maplibregl.Marker({ 
+                element: el, 
+                anchor: 'center' 
+            })
                 .setLngLat([segment.coordinates[0], segment.coordinates[1]])
                 .setPopup(popup)
                 .addTo(map);

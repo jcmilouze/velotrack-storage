@@ -55,9 +55,10 @@ body {
     pointer-events: auto !important;
 }
 
-.maplibregl-marker {
-    z-index: 1000 !important;
+.segment-marker {
+    z-index: 50 !important;
 }
+
 
 
 
