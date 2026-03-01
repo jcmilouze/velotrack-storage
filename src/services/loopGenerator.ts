@@ -54,6 +54,31 @@ export const computeDestination = (
     return [lng2 * RAD2DEG, lat2 * RAD2DEG];
 };
 
+/** Calculate straight-line distance between two positions in km */
+export const computeDistanceKm = (p1: Position, p2: Position): number => {
+    const lat1 = p1[1] * DEG2RAD;
+    const lng1 = p1[0] * DEG2RAD;
+    const lat2 = p2[1] * DEG2RAD;
+    const lng2 = p2[0] * DEG2RAD;
+
+    const dlat = lat2 - lat1;
+    const dlng = lng2 - lng1;
+
+    const a = Math.sin(dlat / 2) * Math.sin(dlat / 2) +
+        Math.cos(lat1) * Math.cos(lat2) *
+        Math.sin(dlng / 2) * Math.sin(dlng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return EARTH_RADIUS_KM * c;
+};
+
+/** Linear interpolation between two coordinates */
+export const interpolate = (p1: Position, p2: Position, fraction: number): Position => {
+    return [
+        p1[0] + (p2[0] - p1[0]) * fraction,
+        p1[1] + (p2[1] - p1[1]) * fraction,
+    ];
+};
+
 export interface LoopOptions {
     /** Departure point [lng, lat] */
     departure: Position;
@@ -81,21 +106,37 @@ export const buildLoopWaypoints = (options: LoopOptions): Position[] => {
     const reachFactor = numDirs === 1 ? 3.5 : numDirs === 2 ? 4.5 : 5.5;
     const legDist = targetDistanceKm / reachFactor;
 
-    const wps: Position[] = [departure];
+    const keyPoints: Position[] = [];
 
     directions.forEach((dir) => {
         const bearing = COMPASS_DIRECTIONS[dir];
         // If it's the only direction, add lateral points for a wider loop
         if (numDirs === 1) {
-            wps.push(computeDestination(departure, bearing + 40, legDist * 0.7));
-            wps.push(computeDestination(departure, bearing, legDist));
-            wps.push(computeDestination(departure, bearing - 40, legDist * 0.7));
+            keyPoints.push(computeDestination(departure, bearing + 40, legDist * 0.7));
+            keyPoints.push(computeDestination(departure, bearing, legDist));
+            keyPoints.push(computeDestination(departure, bearing - 40, legDist * 0.7));
         } else {
             // Sequential directions
-            wps.push(computeDestination(departure, bearing, legDist));
+            keyPoints.push(computeDestination(departure, bearing, legDist));
         }
     });
 
-    wps.push(departure);
+    keyPoints.push(departure); // End the loop
+
+    const wps: Position[] = [departure];
+    let currentPoint = departure;
+
+    // Interpolate points roughly every 10km
+    keyPoints.forEach(target => {
+        const dist = computeDistanceKm(currentPoint, target);
+        const segments = Math.max(1, Math.round(dist / 10)); // 1 point per ~10km
+
+        for (let i = 1; i <= segments; i++) {
+            const fraction = i / segments;
+            wps.push(interpolate(currentPoint, target, fraction));
+        }
+        currentPoint = target;
+    });
+
     return wps;
 };
