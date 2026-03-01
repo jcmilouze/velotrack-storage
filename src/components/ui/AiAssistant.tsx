@@ -75,7 +75,17 @@ const AiAssistant: React.FC<Props> = ({ onClose, isDark }) => {
 
             if (!res.ok) throw new Error('Erreur de communication avec l\'IA');
 
-            const data = await res.json();
+            const responseText = await res.text();
+            if (!responseText) throw new Error('Le serveur a renvoyé une réponse vide.');
+
+            let data;
+            try {
+                data = JSON.parse(responseText);
+            } catch (e) {
+                console.error("Raw response:", responseText);
+                throw new Error('La réponse du serveur n\'est pas au format JSON.');
+            }
+
             const aiData: AiResponse = typeof data.response === 'string' ? JSON.parse(data.response) : (data.response || data);
 
             // 1. Validation de la réponse
