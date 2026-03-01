@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Plus, Minus, Navigation, Sun, Moon, RotateCcw, Undo2, MapPin,
-    RefreshCw, FolderOpen, Layers, AlertTriangle, Upload
+    RefreshCw, FolderOpen, Layers, AlertTriangle, Upload, Sparkles
 } from 'lucide-react';
 import { useRouteStore } from '../../store/useRouteStore';
 import { useMapContext } from '../../context/MapContext';
@@ -14,6 +14,7 @@ import SearchBar from './SearchBar';
 import LoopModal from './LoopModal';
 import RouteLibrary from './RouteLibrary';
 import LayerSelector from './LayerSelector';
+import AiAssistant from './AiAssistant';
 
 const OverlayUI: React.FC = () => {
     const {
@@ -34,6 +35,7 @@ const OverlayUI: React.FC = () => {
 
     const [showLibrary, setShowLibrary] = useState(false);
     const [showLayerSelector, setShowLayerSelector] = useState(false);
+    const [showAiAssistant, setShowAiAssistant] = useState(false);
     const [gpxError, setGpxError] = useState<string | null>(null);
 
     const isDark = theme === 'dark';
@@ -201,6 +203,11 @@ const OverlayUI: React.FC = () => {
                         </div>
                     )}
 
+                    {/* AI Assistant */}
+                    <button onClick={() => setShowAiAssistant(true)} className={`${brutalBox} ${btn} p-4 bg-indigo-50 hover:bg-indigo-100 dark:bg-slate-800 dark:hover:bg-indigo-950 border-indigo-500`} title="Assistant IA">
+                        <Sparkles className="w-6 h-6 text-indigo-500" />
+                    </button>
+
                     {/* Geoloc */}
                     <button onClick={handleLocate} className={`${brutalBox} ${btn} p-4 ${isLocating ? 'animate-pulse' : ''}`} title="Ma position">
                         <Navigation className={`w-6 h-6 ${isLocating ? 'text-blue-500' : ''}`} />
@@ -239,6 +246,9 @@ const OverlayUI: React.FC = () => {
             </AnimatePresence>
             <AnimatePresence>
                 {showLayerSelector && <LayerSelector isDark={isDark} onClose={() => setShowLayerSelector(false)} />}
+            </AnimatePresence>
+            <AnimatePresence>
+                {showAiAssistant && <AiAssistant isDark={isDark} onClose={() => setShowAiAssistant(false)} />}
             </AnimatePresence>
         </>
     );

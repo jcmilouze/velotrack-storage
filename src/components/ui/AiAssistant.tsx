@@ -1,0 +1,172 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Sparkles, Send, X, Loader2 } from 'lucide-react';
+import { useRouteStore } from '../../store/useRouteStore';
+import { useMapContext } from '../../context/MapContext';
+import { buildLoopWaypoints, type CompassDirection } from '../../services/loopGenerator';
+import { calculateRoute } from '../../services/routingService';
+
+interface Props {
+    onClose: () => void;
+    isDark: boolean;
+}
+
+const WEBHOOK_URL = import.meta.env.VITE_N8N_WEBHOOK_URL;
+
+interface AiResponse {
+    type: 'loop' | 'point-to-point';
+    routeType: 'road' | 'gravel';
+    distanceKm: number;
+    directions: CompassDirection[];
+    avoidHighways: boolean;
+    reply: string;
+}
+
+const AiAssistant: React.FC<Props> = ({ onClose, isDark }) => {
+    const [prompt, setPrompt] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [responseMsg, setResponseMsg] = useState('');
+    const inputRef = useRef<HTMLInputElement>(null);
+    const { waypoints, clearRoute, setRouteType } = useRouteStore();
+    const { mapRef } = useMapContext();
+
+    const brutalModal = isDark
+        ? 'bg-slate-800 border-[3px] border-slate-700 text-slate-100 shadow-[8px_8px_0px_rgba(0,0,0,0.5)] rounded-[1.5rem]'
+        : 'bg-[#fdfbf7] border-[3px] border-slate-800 text-slate-900 shadow-[8px_8px_0px_#1e293b] rounded-[1.5rem]';
+    const inputBg = isDark ? 'bg-slate-700' : 'bg-white';
+
+    useEffect(() => {
+        setTimeout(() => inputRef.current?.focus(), 100);
+    }, []);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!prompt.trim() || !WEBHOOK_URL) return;
+
+        setIsLoading(true);
+        setResponseMsg('');
+
+        try {
+            // Get center
+            const map = mapRef.current;
+            const center = map ? map.getCenter() : { lat: 0, lng: 0 };
+            const departure = waypoints[0]?.position ?? [center.lng, center.lat] as [number, number];
+
+            const res = await fetch(WEBHOOK_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt,
+                    lat: departure[1],
+                    lng: departure[0]
+                })
+            });
+
+            if (!res.ok) throw new Error('Erreur de communication avec l\'IA');
+
+            const data = await res.json();
+            // n8n should return strictly the JSON in data.response if using the provided workflow
+            const aiData: AiResponse = typeof data.response === 'string' ? JSON.parse(data.response) : (data.response || data);
+
+            setResponseMsg(aiData.reply || 'Parcours généré !');
+            setRouteType(aiData.routeType);
+
+            if (aiData.type === 'loop') {
+                clearRoute();
+                const loopWaypoints = buildLoopWaypoints({
+                    departure,
+                    targetDistanceKm: aiData.distanceKm || 50,
+                    directions: aiData.directions?.length ? aiData.directions : ['N'],
+                });
+
+                const store = useRouteStore.getState();
+                store.setPointA(loopWaypoints[0]);
+                loopWaypoints.slice(1, -1).forEach((pos, i) => store.addWaypoint(pos, `Étape ${i + 1}`));
+                store.addWaypoint(loopWaypoints[loopWaypoints.length - 1], 'Retour départ');
+
+                await calculateRoute(loopWaypoints, aiData.routeType, aiData.avoidHighways);
+            } else {
+                setResponseMsg("Mode Point-A à Point-B en cours de développement, boucle générée par défaut.");
+            }
+
+            setTimeout(onClose, 3000);
+
+        } catch (error) {
+            console.error(error);
+            setResponseMsg("Oups... l'IA est indisponible ou mal configurée.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-md p-4"
+            onClick={(e) => e.target === e.currentTarget && onClose()}
+        >
+            <motion.div
+                initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+                className={`${brutalModal} w-full max-w-lg p-6 flex flex-col`}
+            >
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center shadow-[2px_2px_0px_#1e293b] border-2 border-slate-900">
+                            <Sparkles className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-black uppercase tracking-tight leading-none">VeloTrack AI</h2>
+                            <p className="text-xs uppercase font-bold text-indigo-400 mt-1">Propulsé par Groq</p>
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors">
+                        <X className="w-6 h-6" />
+                    </button>
+                </div>
+
+                {!WEBHOOK_URL && (
+                    <div className="bg-amber-100 text-amber-900 border-2 border-amber-300 p-3 mb-4 rounded-xl text-sm font-bold">
+                        ⚠️ L'URL du Webhook n8n (VITE_N8N_WEBHOOK_URL) n'est pas configurée dans le fichier .env.
+                    </div>
+                )}
+
+                <div className={`flex-1 min-h-[100px] mb-4 p-4 rounded-xl border-2 border-slate-800 shadow-[inset_4px_4px_0px_rgba(0,0,0,0.1)] ${inputBg} flex items-center justify-center text-center`}>
+                    {isLoading ? (
+                        <div className="flex flex-col items-center gap-3 text-indigo-500">
+                            <Loader2 className="w-8 h-8 animate-spin" />
+                            <span className="text-sm uppercase font-bold tracking-widest animate-pulse">Consultation de la carte...</span>
+                        </div>
+                    ) : responseMsg ? (
+                        <p className="font-bold text-lg">{responseMsg}</p>
+                    ) : (
+                        <p className="text-slate-400 font-bold uppercase text-sm tracking-wide">
+                            "Fais-moi une boucle gravel de 60km avec le vent dans le dos, en évitant les grosses routes."
+                        </p>
+                    )}
+                </div>
+
+                <form onSubmit={handleSubmit} className="flex gap-2">
+                    <input
+                        ref={inputRef}
+                        type="text"
+                        value={prompt}
+                        onChange={(e) => setPrompt(e.target.value)}
+                        disabled={isLoading || !!responseMsg}
+                        placeholder="Demande-moi n'importe quel parcours..."
+                        className={`flex-1 p-4 rounded-2xl border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] font-bold outline-none focus:border-indigo-500 transition-colors
+                            ${isDark ? 'bg-slate-900 text-white placeholder-slate-600' : 'bg-white text-slate-900 placeholder-slate-400'}`}
+                    />
+                    <button
+                        type="submit"
+                        disabled={!prompt.trim() || isLoading || !!responseMsg || !WEBHOOK_URL}
+                        className="w-14 shrink-0 rounded-2xl border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] bg-indigo-500 text-white flex items-center justify-center hover:brightness-110 active:translate-y-1 active:shadow-none transition-all disabled:opacity-50 disabled:active:translate-y-0 disabled:active:shadow-[4px_4px_0px_#1e293b]"
+                    >
+                        <Send className="w-6 h-6 ml-1" />
+                    </button>
+                </form>
+            </motion.div>
+        </motion.div>
+    );
+};
+
+export default AiAssistant;
