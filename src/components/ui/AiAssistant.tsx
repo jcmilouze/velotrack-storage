@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles, Send, X, Loader2 } from 'lucide-react';
 import { useRouteStore } from '../../store/useRouteStore';
-import { useMapContext } from '../../context/MapContext';
 import { buildLoopWaypoints, type CompassDirection } from '../../services/loopGenerator';
 import { calculateRoute } from '../../services/routingService';
 import { searchAddress } from '../../services/geocodingService';
@@ -34,7 +33,6 @@ const AiAssistant: React.FC<Props> = ({ onClose, isDark }) => {
     const [pendingPrompt, setPendingPrompt] = useState('');
     const inputRef = useRef<HTMLInputElement>(null);
     const { waypoints, clearRoute, setRouteType } = useRouteStore();
-    const { mapRef } = useMapContext();
 
     const brutalModal = isDark
         ? 'bg-slate-800 border-[3px] border-slate-700 text-slate-100 shadow-[8px_8px_0px_rgba(0,0,0,0.5)] rounded-[1.5rem]'
