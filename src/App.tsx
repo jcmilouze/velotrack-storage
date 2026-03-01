@@ -5,10 +5,10 @@ import { MapProvider } from './context/MapContext';
 import { useRouteStore } from './store/useRouteStore';
 
 function App() {
-  const { theme } = useRouteStore();
+  const { theme, mapStyle } = useRouteStore();
 
   return (
-    <MapProvider theme={theme}>
+    <MapProvider theme={theme} mapStyle={mapStyle}>
       <main
         className={`relative h-screen w-screen overflow-hidden ${theme === 'dark' ? 'bg-slate-950' : 'bg-slate-100'}`}
         data-theme={theme}

@@ -5,6 +5,44 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 const LIGHT_STYLE = 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json';
 const DARK_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
 
+const SATELLITE_STYLE = {
+    version: 8,
+    sources: {
+        'esri-satellite': {
+            type: 'raster',
+            tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+            tileSize: 256,
+            attribution: '&copy; Esri World Imagery'
+        }
+    },
+    layers: [{
+        id: 'satellite',
+        type: 'raster',
+        source: 'esri-satellite',
+        minzoom: 0,
+        maxzoom: 22
+    }]
+};
+
+const OUTDOORS_STYLE = {
+    version: 8,
+    sources: {
+        'opentopo': {
+            type: 'raster',
+            tiles: ['https://tile.opentopomap.org/{z}/{x}/{y}.png'],
+            tileSize: 256,
+            attribution: '&copy; OpenTopoMap'
+        }
+    },
+    layers: [{
+        id: 'outdoors',
+        type: 'raster',
+        source: 'opentopo',
+        minzoom: 0,
+        maxzoom: 22
+    }]
+};
+
 interface MapContextValue {
     mapRef: React.MutableRefObject<maplibregl.Map | null>;
     isLoaded: boolean;
@@ -19,9 +57,18 @@ const MapContext = createContext<MapContextValue | null>(null);
 interface MapProviderProps {
     children: ReactNode;
     theme: 'light' | 'dark';
+    mapStyle?: 'auto' | 'light' | 'dark' | 'satellite' | 'outdoors';
 }
 
-export const MapProvider: React.FC<MapProviderProps> = ({ children, theme }) => {
+const getStyle = (theme: 'light' | 'dark', mapStyle: 'auto' | 'light' | 'dark' | 'satellite' | 'outdoors') => {
+    if (mapStyle === 'satellite') return SATELLITE_STYLE as maplibregl.StyleSpecification;
+    if (mapStyle === 'outdoors') return OUTDOORS_STYLE as maplibregl.StyleSpecification;
+    if (mapStyle === 'light') return LIGHT_STYLE;
+    if (mapStyle === 'dark') return DARK_STYLE;
+    return theme === 'dark' ? DARK_STYLE : LIGHT_STYLE;
+};
+
+export const MapProvider: React.FC<MapProviderProps> = ({ children, theme, mapStyle = 'auto' }) => {
     const mapRef = useRef<maplibregl.Map | null>(null);
     const [isLoaded, setIsLoaded] = useState(false);
 
@@ -32,7 +79,7 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children, theme }) => 
 
         const map = new maplibregl.Map({
             container: 'map-container',
-            style: theme === 'dark' ? DARK_STYLE : LIGHT_STYLE,
+            style: getStyle(theme, mapStyle),
             center: [2.3522, 48.8566],
             zoom: 12,
             trackResize: true,
@@ -63,8 +110,8 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children, theme }) => 
     useEffect(() => {
         const map = mapRef.current;
         if (!map || !isLoaded) return;
-        map.setStyle(theme === 'dark' ? DARK_STYLE : LIGHT_STYLE);
-    }, [theme, isLoaded]);
+        map.setStyle(getStyle(theme, mapStyle));
+    }, [theme, mapStyle, isLoaded]);
 
     const zoomIn = useCallback(() => mapRef.current?.zoomIn({ duration: 250 }), []);
     const zoomOut = useCallback(() => mapRef.current?.zoomOut({ duration: 250 }), []);

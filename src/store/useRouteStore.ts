@@ -17,6 +17,7 @@ export interface RouteManeuver {
 
 export type RouteType = 'road' | 'gravel';
 export type Theme = 'light' | 'dark';
+export type MapStyle = 'auto' | 'light' | 'dark' | 'satellite' | 'outdoors';
 export type ClickMode = 'setA' | 'setB';
 
 export interface Waypoint {
@@ -40,6 +41,7 @@ interface RouteState {
     error: string | null;
     hoveredPosition: [number, number] | null;
     theme: Theme;
+    mapStyle: MapStyle;
     clickMode: ClickMode;
     isBottomSheetOpen: boolean;
     showLayers: boolean;         // F8 — display cycling network
@@ -61,6 +63,7 @@ interface RouteState {
     setIsLoading: (loading: boolean) => void;
     setError: (error: string | null) => void;
     setTheme: (theme: Theme) => void;
+    setMapStyle: (style: MapStyle) => void;
     setClickMode: (mode: ClickMode) => void;
     setIsBottomSheetOpen: (open: boolean) => void;
     setShowLayers: (show: boolean) => void;
@@ -100,6 +103,7 @@ export const useRouteStore = create<RouteState>((set, get) => ({
     error: null,
     hoveredPosition: null,
     theme: 'light',
+    mapStyle: 'auto',
     clickMode: 'setA',
     isBottomSheetOpen: false,
     showLayers: false,
@@ -180,6 +184,7 @@ export const useRouteStore = create<RouteState>((set, get) => ({
     setIsLoading: (loading) => set({ isLoading: loading }),
     setError: (error) => set({ error }),
     setTheme: (theme) => set({ theme }),
+    setMapStyle: (style) => set({ mapStyle: style }),
     setClickMode: (mode) => set({ clickMode: mode }),
     setIsBottomSheetOpen: (open) => set({ isBottomSheetOpen: open }),
     setShowLayers: (show) => set({ showLayers: show }),

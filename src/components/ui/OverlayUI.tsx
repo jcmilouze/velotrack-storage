@@ -13,6 +13,7 @@ import { decodeRouteFromUrl } from '../../services/urlSharing';
 import SearchBar from './SearchBar';
 import LoopModal from './LoopModal';
 import RouteLibrary from './RouteLibrary';
+import LayerSelector from './LayerSelector';
 
 const OverlayUI: React.FC = () => {
     const {
@@ -23,7 +24,7 @@ const OverlayUI: React.FC = () => {
         setRouteGeometry, setRouteSummary, setManeuvers,
         setElevationProfile, setRouteCoordinates,
         setIsBottomSheetOpen, addWaypoint, undoWaypoint,
-        showLayers, setShowLayers, isBottomSheetOpen,
+        showLayers, isBottomSheetOpen,
         showLoop, setShowLoop
     } = useRouteStore();
 
@@ -32,6 +33,7 @@ const OverlayUI: React.FC = () => {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [showLibrary, setShowLibrary] = useState(false);
+    const [showLayerSelector, setShowLayerSelector] = useState(false);
     const [gpxError, setGpxError] = useState<string | null>(null);
 
     const isDark = theme === 'dark';
@@ -109,8 +111,6 @@ const OverlayUI: React.FC = () => {
         }
     }, [clearRoute, setRouteName, setRouteGeometry, setRouteSummary, setManeuvers, setElevationProfile, setRouteCoordinates, addWaypoint, fitBounds, setIsBottomSheetOpen]);
 
-    const handleLayersToggle = () => setShowLayers(!showLayers);
-
     return (
         <>
             <div className="absolute inset-0 z-10 pointer-events-none flex flex-col p-4 md:p-5 justify-between">
@@ -173,9 +173,9 @@ const OverlayUI: React.FC = () => {
                         <div className={`h-1 mx-2 ${isDark ? 'bg-slate-700' : 'bg-slate-800'}`} />
                         {/* Layers */}
                         <button
-                            onClick={handleLayersToggle}
-                            className={`${btn} ${showLayers ? (isDark ? 'bg-amber-400 text-slate-900 border-[2px] border-slate-800 shadow-[2px_2px_0px_rgba(0,0,0,0.5)]' : 'bg-amber-400 text-slate-900 border-[2px] border-slate-800 shadow-[2px_2px_0px_#1e293b]') : ''}`}
-                            title="Couches carte"
+                            onClick={() => setShowLayerSelector(true)}
+                            className={`${btn} ${showLayers ? (isDark ? 'text-amber-400' : 'text-amber-500') : ''}`}
+                            title="Fonds de carte et Couches"
                         >
                             <Layers className="w-6 h-6" />
                         </button>
@@ -236,6 +236,9 @@ const OverlayUI: React.FC = () => {
             </AnimatePresence>
             <AnimatePresence>
                 {showLibrary && <RouteLibrary isDark={isDark} onClose={() => setShowLibrary(false)} />}
+            </AnimatePresence>
+            <AnimatePresence>
+                {showLayerSelector && <LayerSelector isDark={isDark} onClose={() => setShowLayerSelector(false)} />}
             </AnimatePresence>
         </>
     );
