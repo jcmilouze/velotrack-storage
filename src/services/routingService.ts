@@ -80,7 +80,19 @@ const fetchFromValhalla = async (
     elevation?: 'flat' | 'hilly' | 'mountain'
 ) => {
     const query = {
-        locations: waypoints.map((p) => ({ lat: p[1], lon: p[0] })),
+        locations: waypoints.map((p, index) => {
+            const isEndpoint = index === 0 || index === waypoints.length - 1;
+            return {
+                lat: p[1],
+                lon: p[0],
+                // "through" force l'algorithme à passer à travers sans s'arrêter, 
+                // interdisant les demi-tours. Cela évite totalement les petites
+                // impasses ou culs-de-sac (qui créent des "spurs" ou aller-retours).
+                type: isEndpoint ? 'break' : 'through',
+                // Rayon de recherche généreux pour s'accrocher à la route principale la plus proche
+                radius: 2000
+            };
+        }),
         ...getValhallaCostingOptions(routeType, avoidHighways, elevation),
         units: 'kilometers',
     };
