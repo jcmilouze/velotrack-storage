@@ -7,6 +7,7 @@ import { buildLoopWaypoints, type CompassDirection } from '../../services/loopGe
 import { calculateRoute } from '../../services/routingService';
 import { searchAddress } from '../../services/geocodingService';
 import { fetchWeather, getWeatherDescription } from '../../services/weatherService';
+import { findSegmentByName } from '../../services/segmentService';
 
 interface Props {
     onClose: () => void;
@@ -90,14 +91,21 @@ const AiAssistant: React.FC<Props> = ({ onClose, isDark }) => {
 
                 let poiPosition: [number, number] | undefined = undefined;
                 if (aiData.poi) {
-                    try {
-                        const results = await searchAddress(aiData.poi);
-                        if (results.length > 0) {
-                            poiPosition = [results[0].lng, results[0].lat];
-                            setResponseMsg(`${aiData.reply} (Trouvé: ${results[0].shortName})`);
+                    // Try segment database first
+                    const knownSegment = findSegmentByName(aiData.poi);
+                    if (knownSegment) {
+                        poiPosition = knownSegment.coordinates;
+                        setResponseMsg(`${aiData.reply} (Segment détecté : ${knownSegment.name})`);
+                    } else {
+                        try {
+                            const results = await searchAddress(aiData.poi);
+                            if (results.length > 0) {
+                                poiPosition = [results[0].lng, results[0].lat];
+                                setResponseMsg(`${aiData.reply} (Trouvé: ${results[0].shortName})`);
+                            }
+                        } catch (err) {
+                            console.error("Geocoding failed for POI:", err);
                         }
-                    } catch (err) {
-                        console.error("Geocoding failed for POI:", err);
                     }
                 }
 
