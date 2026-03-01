@@ -5,6 +5,7 @@ import { useRouteStore } from '../../store/useRouteStore';
 import { calculateRoute } from '../../services/routingService';
 import RouteLayer from './RouteLayer';
 import CyclingLayer from './CyclingLayer';
+import SegmentLayer from './SegmentLayer';
 
 const MARKER_COLORS: Record<string, string> = {
     '1': '#78BE20', // Vert pour le départ
@@ -177,6 +178,7 @@ const MapView: React.FC = () => {
                 <>
                     <CyclingLayer map={mapRef.current!} />
                     <RouteLayer map={mapRef.current!} />
+                    <SegmentLayer map={mapRef.current!} />
                 </>
             )}
             {error && (
