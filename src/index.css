@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+@theme {
+    --color-brand-primary: #FC4C02;
+    --color-brand-secondary: #78BE20;
+    --color-neo-yellow: #f2f20d;
+    --color-neo-blue: #00e5ff;
+    --color-neo-red: #ff3333;
+
+    --shadow-brutal: 4px 4px 0px 0px rgba(0, 0, 0, 1);
+    --shadow-brutal-lg: 6px 6px 0px 0px rgba(0, 0, 0, 1);
+    --shadow-brutal-hover: 2px 2px 0px 0px rgba(0, 0, 0, 1);
+}
+
+/* ── Google Fonts ── */
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+:root {
+    font-family: 'Space Grotesk', system-ui, Avenir, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+    font-weight: 500;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* ── Brutal Utility ── */
+.brutal-card {
+    background-color: #ffffff;
+    color: #000000;
+    border: 3px solid #000000;
+    border-radius: 4px;
+    box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 1);
+}
+
+#map-container .maplibregl-ctrl-bottom-left,
+#map-container .maplibregl-ctrl-bottom-right {
+    display: none;
+    /* Hide default MapLibre controls – we use our own */
+}
+
+/* ── Markers ── */
+.route-point-marker {
+    z-index: 1000 !important;
+    pointer-events: auto !important;
+}
+
+.maplibregl-marker {
+    z-index: 1000 !important;
+}
+
+
+
+
+/* ── Scrollbar styling ── */
+::-webkit-scrollbar {
+    width: 4px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.15);
+    border-radius: 4px;
+}
