@@ -55,9 +55,18 @@ const RouteLayer: React.FC<Props> = ({ map }) => {
             map.once('load', addLayers);
         }
 
+        const handleStyleData = () => {
+            addLayers();
+            const routeSource = map.getSource('route-source') as maplibregl.GeoJSONSource | undefined;
+            if (routeSource) {
+                const currentGeom = useRouteStore.getState().routeGeometry;
+                routeSource.setData(currentGeom ?? { type: 'FeatureCollection', features: [] });
+            }
+        };
+
         // Re-add layers when the style changes (e.g. light/dark switch)
-        map.on('styledata', addLayers);
-        return () => { map.off('styledata', addLayers); };
+        map.on('styledata', handleStyleData);
+        return () => { map.off('styledata', handleStyleData); };
     }, [map]);
 
     // Update route data reactively
