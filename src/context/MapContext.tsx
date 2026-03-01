@@ -79,9 +79,15 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children, theme }) => 
         const bounds = new maplibregl.LngLatBounds();
         coords.forEach((coord) => bounds.extend(coord as [number, number]));
 
+        const isMobile = window.innerWidth < 768;
         map.fitBounds(bounds, {
-            padding: { top: 100, bottom: 350, left: 50, right: 50 },
-            duration: 1000
+            padding: {
+                top: 80,
+                bottom: isMobile ? 120 : 380,
+                left: isMobile ? 40 : 80,
+                right: isMobile ? 40 : 80
+            },
+            duration: 1200
         });
     }, []);
 

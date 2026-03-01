@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Plus, Minus, Navigation, Sun, Moon, RotateCcw, Undo2, MapPin,
-    RefreshCw, FolderOpen, Upload, Layers, AlertTriangle
+    RefreshCw, FolderOpen, Layers, AlertTriangle
 } from 'lucide-react';
 import { useRouteStore } from '../../store/useRouteStore';
 import { useMapContext } from '../../context/MapContext';
@@ -164,23 +164,12 @@ const OverlayUI: React.FC = () => {
                     initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.2 }}
                     className={`flex flex-col gap-3 pointer-events-auto self-end transition-all duration-300 ${isBottomSheetOpen ? 'mb-[50vh] md:mb-0' : 'mb-0'}`}
                 >
-                    {/* Action group */}
+                    {/* Map Management Group */}
                     <div className={`${brutalBox} flex flex-col p-1`}>
-                        {/* Loop generator */}
-                        <button onClick={() => setShowLoop(true)} className={btn} title="Générer une boucle (Auto-Route)">
-                            <RefreshCw className="w-6 h-6 text-brand-primary" />
-                        </button>
-                        <div className={`h-1 mx-2 ${isDark ? 'bg-slate-700' : 'bg-slate-800'}`} />
                         {/* Library */}
                         <button onClick={() => setShowLibrary(true)} className={btn} title="Mes parcours">
                             <FolderOpen className="w-6 h-6" />
                         </button>
-                        <div className={`h-1 mx-2 ${isDark ? 'bg-slate-700' : 'bg-slate-800'}`} />
-                        {/* Import GPX */}
-                        <button onClick={() => fileInputRef.current?.click()} className={btn} title="Importer un GPX">
-                            <Upload className="w-6 h-6" />
-                        </button>
-                        <input id="gpx-import-input" ref={fileInputRef} type="file" accept=".gpx" className="hidden" onChange={handleGpxImport} />
                         <div className={`h-1 mx-2 ${isDark ? 'bg-slate-700' : 'bg-slate-800'}`} />
                         {/* Layers */}
                         <button
@@ -192,20 +181,21 @@ const OverlayUI: React.FC = () => {
                         </button>
                     </div>
 
-                    {/* Zoom & Fit */}
+                    {/* Zoom Tools */}
                     <div className={`${brutalBox} flex flex-col p-1`}>
                         <button onClick={zoomIn} className={btn} title="Zoom avant"><Plus className="w-6 h-6" /></button>
                         <div className={`h-1 mx-2 ${isDark ? 'bg-slate-700' : 'bg-slate-800'}`} />
-                        {routeCoordinates.length > 0 && (
-                            <>
-                                <button onClick={() => fitBounds(routeCoordinates)} className={btn} title="Centrer sur le parcours">
-                                    <Layers className="w-6 h-6 text-blue-500" />
-                                </button>
-                                <div className={`h-1 mx-2 ${isDark ? 'bg-slate-700' : 'bg-slate-800'}`} />
-                            </>
-                        )}
                         <button onClick={zoomOut} className={btn} title="Zoom arrière"><Minus className="w-6 h-6" /></button>
                     </div>
+
+                    {/* Quick Access Actions (Visible when no route or as global shortcuts) */}
+                    {!routeSummary && (
+                        <div className={`${brutalBox} flex flex-col p-1`}>
+                            <button onClick={() => setShowLoop(true)} className={btn} title="Générer une boucle">
+                                <RefreshCw className="w-6 h-6 text-brand-primary" />
+                            </button>
+                        </div>
+                    )}
 
                     {/* Geoloc */}
                     <button onClick={handleLocate} className={`${brutalBox} ${btn} p-4 ${isLocating ? 'animate-pulse' : ''}`} title="Ma position">
@@ -217,7 +207,7 @@ const OverlayUI: React.FC = () => {
                         {isDark ? <Sun className="w-6 h-6 text-amber-400" /> : <Moon className="w-6 h-6 text-slate-800" />}
                     </button>
 
-                    {/* Open/Close sheet Toggle */}
+                    {/* Open/Close sheet Toggle (The Marker Button) */}
                     {routeSummary && (
                         <motion.button
                             initial={{ scale: 0 }} animate={{ scale: 1 }}
@@ -234,7 +224,9 @@ const OverlayUI: React.FC = () => {
                 </motion.div>
             </div>
 
-            {/* Modals */}
+            {/* Modals & Hidden Inputs */}
+            <input id="gpx-import-input" ref={fileInputRef} type="file" accept=".gpx" className="hidden" onChange={handleGpxImport} />
+
             <AnimatePresence>
                 {showLoop && <LoopModal isDark={isDark} onClose={() => setShowLoop(false)} />}
             </AnimatePresence>
