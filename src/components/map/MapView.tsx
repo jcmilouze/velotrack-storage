@@ -17,6 +17,7 @@ const MapView: React.FC = () => {
     const addWaypoint = useRouteStore((s) => s.addWaypoint);
     const removeWaypoint = useRouteStore((s) => s.removeWaypoint);
     const updateWaypointPosition = useRouteStore((s) => s.updateWaypointPosition);
+    const hoveredPosition = useRouteStore((s) => s.hoveredPosition);
     const isLoading = useRouteStore((s) => s.isLoading);
     const error = useRouteStore((s) => s.error);
     const routeType = useRouteStore((s) => s.routeType);
@@ -24,6 +25,7 @@ const MapView: React.FC = () => {
     const { mapRef, isLoaded } = useMapContext();
 
     const markersRef = useRef<Map<string, maplibregl.Marker>>(new Map());
+    const hoverMarkerRef = useRef<maplibregl.Marker | null>(null);
 
     const createMarkerEl = useCallback((label: string, id: string) => {
         const color = MARKER_COLORS[label] ?? MARKER_COLORS.default;
@@ -120,6 +122,37 @@ const MapView: React.FC = () => {
             }
         });
     }, [waypoints, isLoaded, createMarkerEl, mapRef, updateWaypointPosition]);
+
+    // Update hover marker
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !isLoaded) return;
+
+        if (hoveredPosition) {
+            if (!hoverMarkerRef.current) {
+                const el = document.createElement('div');
+                el.style.cssText = `
+                    width: 16px; height: 16px;
+                    background: white;
+                    border: 3px solid #FC4C02;
+                    border-radius: 50%;
+                    box-shadow: 0 0 10px rgba(0,0,0,0.5);
+                    pointer-events: none;
+                `;
+                hoverMarkerRef.current = new maplibregl.Marker({
+                    element: el,
+                    anchor: 'center'
+                }).setLngLat(hoveredPosition).addTo(map);
+            } else {
+                hoverMarkerRef.current.setLngLat(hoveredPosition);
+            }
+        } else {
+            if (hoverMarkerRef.current) {
+                hoverMarkerRef.current.remove();
+                hoverMarkerRef.current = null;
+            }
+        }
+    }, [hoveredPosition, isLoaded, mapRef]);
 
     // Click handler — add waypoint
     useEffect(() => {

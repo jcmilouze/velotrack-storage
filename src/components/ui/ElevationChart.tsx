@@ -1,5 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import type { ElevationProfile } from '../../services/elevationService';
+import { useRouteStore } from '../../store/useRouteStore';
 
 interface Props {
     profile: ElevationProfile;
@@ -7,7 +8,11 @@ interface Props {
 }
 
 const ElevationChart: React.FC<Props> = ({ profile, isDark }) => {
-    const { samples, minElevation, maxElevation } = profile;
+    const { samples, coordinates, minElevation, maxElevation } = profile;
+    const { setHoveredPosition } = useRouteStore();
+
+    const containerRef = useRef<SVGSVGElement>(null);
+    const [localHoverIdx, setLocalHoverIdx] = useState<number | null>(null);
 
     const WIDTH = 320;
     const HEIGHT = 80;
@@ -41,12 +46,41 @@ const ElevationChart: React.FC<Props> = ({ profile, isDark }) => {
     // Generate 3 y-axis labels
     const yLabels = [maxElevation, Math.round((maxElevation + minElevation) / 2), minElevation];
 
+    const handleMouseMove = (e: React.MouseEvent) => {
+        if (!containerRef.current) return;
+        const rect = containerRef.current.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * WIDTH;
+
+        const chartX = x - PADDING.left;
+        if (chartX < 0 || chartX > chartW) {
+            setLocalHoverIdx(null);
+            setHoveredPosition(null);
+            return;
+        }
+
+        const ratio = chartX / chartW;
+        const idx = Math.round(ratio * (samples.length - 1));
+
+        if (idx >= 0 && idx < samples.length) {
+            setLocalHoverIdx(idx);
+            setHoveredPosition(coordinates[idx] as [number, number]);
+        }
+    };
+
+    const handleMouseLeave = () => {
+        setLocalHoverIdx(null);
+        setHoveredPosition(null);
+    };
+
     return (
         <svg
+            ref={containerRef}
             width="100%"
             viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
             preserveAspectRatio="xMidYMid meet"
-            style={{ display: 'block' }}
+            style={{ display: 'block', cursor: 'crosshair' }}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}
         >
             <defs>
                 <linearGradient id="elevGrad" x1="0" y1="0" x2="0" y2="1">
@@ -97,6 +131,29 @@ const ElevationChart: React.FC<Props> = ({ profile, isDark }) => {
                 x2={PADDING.left + chartW} y2={PADDING.top + chartH}
                 stroke={gridColor} strokeWidth={1}
             />
+
+            {/* Hover Guide */}
+            {localHoverIdx !== null && (
+                <g>
+                    <line
+                        x1={PADDING.left + (localHoverIdx / (samples.length - 1)) * chartW}
+                        y1={PADDING.top}
+                        x2={PADDING.left + (localHoverIdx / (samples.length - 1)) * chartW}
+                        y2={PADDING.top + chartH}
+                        stroke={isDark ? '#fff' : '#000'}
+                        strokeWidth={1}
+                        strokeDasharray="4 2"
+                    />
+                    <circle
+                        cx={PADDING.left + (localHoverIdx / (samples.length - 1)) * chartW}
+                        cy={PADDING.top + chartH - ((samples[localHoverIdx] - minElevation) / range) * chartH}
+                        r={4}
+                        fill={lineColor}
+                        stroke="#fff"
+                        strokeWidth={2}
+                    />
+                </g>
+            )}
         </svg>
     );
 };

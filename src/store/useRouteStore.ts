@@ -38,6 +38,7 @@ interface RouteState {
     avoidHighways: boolean;      // F1 — évitement grands axes
     isLoading: boolean;
     error: string | null;
+    hoveredPosition: [number, number] | null;
     theme: Theme;
     clickMode: ClickMode;
     isBottomSheetOpen: boolean;
@@ -47,6 +48,7 @@ interface RouteState {
     removeWaypoint: (id: string) => void;
     updateWaypointPosition: (id: string, pos: Position) => void;
     undoWaypoint: () => void;
+    setHoveredPosition: (pos: [number, number] | null) => void;
     setRouteGeometry: (geo: any | null) => void;
     setRouteSummary: (summary: RouteSummary | null) => void;
     setManeuvers: (maneuvers: RouteManeuver[]) => void;
@@ -94,6 +96,7 @@ export const useRouteStore = create<RouteState>((set, get) => ({
     avoidHighways: true,    // default ON — safest for cyclists
     isLoading: false,
     error: null,
+    hoveredPosition: null,
     theme: 'light',
     clickMode: 'setA',
     isBottomSheetOpen: false,
@@ -160,6 +163,8 @@ export const useRouteStore = create<RouteState>((set, get) => ({
         }
         return { waypoints: newWps };
     }),
+
+    setHoveredPosition: (pos) => set({ hoveredPosition: pos }),
 
     setRouteGeometry: (geo) => set({ routeGeometry: geo }),
     setRouteSummary: (summary) => set({ routeSummary: summary }),

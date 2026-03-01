@@ -14,6 +14,8 @@ export interface ElevationProfile {
     ascent: number;
     /** Total descent in meters */
     descent: number;
+    /** Corresponding coordinates [lng, lat] for each sample */
+    coordinates: number[][];
 }
 
 /**
@@ -66,6 +68,9 @@ export const fetchElevationProfile = async (
             maxElevation: Math.max(...heights),
             ascent: Math.round(ascent),
             descent: Math.round(descent),
+            // The Valhalla /height with resample_distance returns a reshaped list
+            // If resample_distance is used, we might need the exact shape from the response
+            coordinates: data.shape ? data.shape.map((p: any) => [p.lon, p.lat]) : sampled,
         };
     } catch (err) {
         console.warn('Elevation fetch failed:', err);
