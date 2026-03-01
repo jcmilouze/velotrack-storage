@@ -143,7 +143,8 @@ const AiAssistant: React.FC<Props> = ({ onClose, isDark }) => {
                     departure,
                     targetDistanceKm: aiData.distanceKm || 50,
                     directions: aiData.directions?.length ? aiData.directions : ['N'],
-                    poi: poiPosition
+                    poi: poiPosition,
+                    elevation: aiData.elevation
                 });
 
                 const store = useRouteStore.getState();

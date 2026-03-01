@@ -88,6 +88,8 @@ export interface LoopOptions {
     directions: CompassDirection[];
     /** Optional Point of Interest to pass through */
     poi?: Position;
+    /** Elevation preference */
+    elevation?: 'flat' | 'hilly' | 'mountain';
 }
 
 /**
@@ -96,7 +98,7 @@ export interface LoopOptions {
  * for the outbound and return legs, creating a "true loop".
  */
 export const buildLoopWaypoints = (options: LoopOptions): Position[] => {
-    const { departure, targetDistanceKm, directions, poi } = options;
+    const { departure, targetDistanceKm, directions, poi, elevation } = options;
 
     const numDirs = directions.length;
     const reachFactor = numDirs === 1 ? 3.5 : numDirs === 2 ? 4.5 : 5.5;
@@ -117,9 +119,14 @@ export const buildLoopWaypoints = (options: LoopOptions): Position[] => {
         directions.forEach((dir) => {
             const bearing = COMPASS_DIRECTIONS[dir];
             if (numDirs === 1) {
-                keyPoints.push(computeDestination(departure, bearing + 40, legDist * 0.7));
+                // Adjust loop geometry based on elevation preference
+                // Flat: very narrow loop to increase chances of staying in a single valley (15deg)
+                // Mountain: wide loop to force crossing different valleys and ridges (50deg)
+                const spread = elevation === 'flat' ? 15 : elevation === 'mountain' ? 50 : 35;
+                
+                keyPoints.push(computeDestination(departure, bearing + spread, legDist * 0.8));
                 keyPoints.push(computeDestination(departure, bearing, legDist));
-                keyPoints.push(computeDestination(departure, bearing - 40, legDist * 0.7));
+                keyPoints.push(computeDestination(departure, bearing - spread, legDist * 0.8));
             } else {
                 keyPoints.push(computeDestination(departure, bearing, legDist));
             }
