@@ -29,26 +29,25 @@ export const getManeuverIcon = (type: number): string => MANEUVER_ICONS[type] ??
 
 // ─── Valhalla costing profiles ────────────────────────────────────────────
 
-const getValhallaCostingOptions = (routeType: RouteType, avoidHighways: boolean) => {
+const getValhallaCostingOptions = (routeType: RouteType, avoidHighways: boolean, elevation?: 'flat' | 'hilly' | 'mountain') => {
     // Features to exclude from any route
     const avoid_features = avoidHighways ? ['motorway', 'trunk', 'toll'] : ['motorway'];
 
+    // Map elevation preference to Valhalla's use_hills (0.0 to 1.0)
+    let use_hills = 0.5; // Default: Hilly
+    if (elevation === 'flat') use_hills = 0.1;
+    if (elevation === 'mountain') use_hills = 1.0;
+    // For road specifically, if no preference, we used 0.3 before. Let's keep a sane default.
+    if (!elevation && routeType === 'road') use_hills = 0.3;
+
     if (routeType === 'gravel') {
-        /**
-         * Gravel profile : routes asphaltées OK, chemins praticables privilégiés
-         * - bicycle_type Cross = géométrie gravel (pneus larges, confort chemins)
-         * - use_roads 0.5 = roads acceptées mais non prioritaires
-         * - use_trails 0.5 = chemins et pistes forestières acceptés
-         * - avoid_bad_surfaces 0.25 = accepte gravel/compacted, évite boue/impraticable
-         * - use_hills 0.5 = accepte le relief naturel
-         */
         return {
             costing: 'bicycle',
             costing_options: {
                 bicycle: {
                     bicycle_type: 'Cross',
                     use_roads: 0.5,
-                    use_hills: 0.5,
+                    use_hills,
                     use_trails: 0.5,
                     avoid_bad_surfaces: 0.25,
                 },
@@ -57,21 +56,13 @@ const getValhallaCostingOptions = (routeType: RouteType, avoidHighways: boolean)
         };
     }
 
-    /**
-     * Route profile : uniquement bitume strict
-     * - bicycle_type Road = vélo de route (pneus fins)
-     * - use_roads 1.0 = routes asphaltées UNIQUEMENT
-     * - avoid_bad_surfaces 1.0 = fuit toute surface non asphaltée
-     * - use_trails 0.0 = jamais de chemins/sentiers
-     * - use_hills 0.3 = préfère éviter les cols
-     */
     return {
         costing: 'bicycle',
         costing_options: {
             bicycle: {
                 bicycle_type: 'Road',
                 use_roads: 1.0,
-                use_hills: 0.3,
+                use_hills,
                 use_trails: 0.0,
                 avoid_bad_surfaces: 1.0,
             },
@@ -85,11 +76,12 @@ const getValhallaCostingOptions = (routeType: RouteType, avoidHighways: boolean)
 const fetchFromValhalla = async (
     waypoints: Position[],
     routeType: RouteType,
-    avoidHighways: boolean
+    avoidHighways: boolean,
+    elevation?: 'flat' | 'hilly' | 'mountain'
 ) => {
     const query = {
         locations: waypoints.map((p) => ({ lat: p[1], lon: p[0] })),
-        ...getValhallaCostingOptions(routeType, avoidHighways),
+        ...getValhallaCostingOptions(routeType, avoidHighways, elevation),
         units: 'kilometers',
     };
 
@@ -129,9 +121,10 @@ const parseValhallaResponse = (data: any) => {
 
 // ─── OSRM Fallback ────────────────────────────────────────────────────────
 
-const fetchFromOSRM = async (pointA: Position, pointB: Position) => {
+const fetchFromOSRM = async (waypoints: Position[]) => {
     if (!OSRM_FALLBACK_URL) throw new Error('No OSRM URL configured');
-    const url = `${OSRM_FALLBACK_URL}/route/v1/cycling/${pointA[0]},${pointA[1]};${pointB[0]},${pointB[1]}?overview=full&geometries=geojson&steps=true`;
+    const coordsStr = waypoints.map(p => `${p[0]},${p[1]}`).join(';');
+    const url = `${OSRM_FALLBACK_URL}/route/v1/cycling/${coordsStr}?overview=full&geometries=geojson&steps=true`;
     const res = await fetch(url);
     if (!res.ok) throw new Error(`OSRM: ${res.status}`);
     return res.json();
@@ -143,13 +136,21 @@ const parseOSRMResponse = (data: any) => {
     const coords: number[][] = route.geometry.coordinates;
     const summary: RouteSummary = { length: route.distance / 1000, time: route.duration, cost: 0 };
     const snappedLocations = data.waypoints?.map((wp: any) => wp.location as [number, number]);
+
+    const allManeuvers: RouteManeuver[] = [];
+    route.legs.forEach((leg: any) => {
+        (leg.steps ?? []).forEach((s: any) => {
+            allManeuvers.push({
+                instruction: s.maneuver.type.replace(/_/g, ' '),
+                length: s.distance / 1000, time: s.duration, type: 2,
+            });
+        });
+    });
+
     return {
         routeGeometry: { type: 'Feature', properties: { summary }, geometry: { type: 'LineString', coordinates: coords } },
         summary,
-        maneuvers: (route.legs?.[0]?.steps ?? []).map((s: any) => ({
-            instruction: s.maneuver.type.replace(/_/g, ' '),
-            length: s.distance / 1000, time: s.duration, type: 2,
-        })),
+        maneuvers: allManeuvers,
         coordinates: coords,
         snappedLocations
     };
@@ -160,7 +161,8 @@ const parseOSRMResponse = (data: any) => {
 export const calculateRoute = async (
     waypoints: Position[],
     routeType: RouteType = 'road',
-    avoidHighways?: boolean
+    avoidHighways?: boolean,
+    elevation?: 'flat' | 'hilly' | 'mountain'
 ): Promise<void> => {
     if (waypoints.length < 2) return;
 
@@ -174,11 +176,11 @@ export const calculateRoute = async (
     try {
         let result;
         try {
-            const data = await fetchFromValhalla(waypoints, routeType, avoid);
+            const data = await fetchFromValhalla(waypoints, routeType, avoid, elevation);
             result = parseValhallaResponse(data);
         } catch (err) {
             console.warn('Valhalla failed, trying OSRM...', err);
-            const data = await fetchFromOSRM(waypoints[0], waypoints[waypoints.length - 1]);
+            const data = await fetchFromOSRM(waypoints);
             result = parseOSRMResponse(data);
         }
 

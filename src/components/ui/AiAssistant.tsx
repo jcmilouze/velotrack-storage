@@ -19,6 +19,7 @@ interface AiResponse {
     type: 'loop' | 'point-to-point';
     routeType: 'road' | 'gravel';
     distanceKm: number;
+    elevation: 'flat' | 'hilly' | 'mountain';
     directions: CompassDirection[];
     poi?: string | null;
     avoidHighways: boolean;
@@ -150,7 +151,7 @@ const AiAssistant: React.FC<Props> = ({ onClose, isDark }) => {
                 loopWaypoints.slice(1, -1).forEach((pos, i) => store.addWaypoint(pos, `Étape ${i + 1}`));
                 store.addWaypoint(loopWaypoints[loopWaypoints.length - 1], 'Retour départ');
 
-                await calculateRoute(loopWaypoints, aiData.routeType, aiData.avoidHighways);
+                await calculateRoute(loopWaypoints, aiData.routeType, aiData.avoidHighways, aiData.elevation);
             } else {
                 setResponseMsg("Mode Point-A à Point-B en cours de développement, boucle générée par défaut.");
             }
