@@ -3,15 +3,17 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     ChevronDown, MapPin, Clock, RotateCcw, ArrowUpCircle, ArrowDownCircle,
     Download, CheckCircle2, Edit3, BookmarkPlus, Share2, Copy, Flame,
-    CornerDownRight, Navigation, RefreshCw, Layers, Upload
+    CornerDownRight, Navigation, RefreshCw, Layers, Upload, Activity, Loader2
 } from 'lucide-react';
 import { useRouteStore } from '../../store/useRouteStore';
 import { formatDistance, formatDuration } from '../../services/routingService';
-import { downloadGpx } from '../../services/gpxExport';
+import { downloadGpx, generateGpx } from '../../services/gpxExport';
 import { routeLibrary } from '../../services/routeLibrary';
 import { copyUrlToClipboard } from '../../services/urlSharing';
 import { fetchWeather, getWeatherDescription, getWindDirection } from '../../services/weatherService';
 import { useMapContext } from '../../context/MapContext';
+import { uploadToStrava } from '../../services/stravaService';
+import { useStravaAuth } from '../../hooks/useStravaAuth';
 import ElevationChart from './ElevationChart';
 
 const BottomSheet: React.FC = () => {
@@ -28,8 +30,12 @@ const BottomSheet: React.FC = () => {
     const [isExported, setIsExported] = useState(false);
     const [isSaved, setIsSaved] = useState(false);
     const [isCopied, setIsCopied] = useState(false);
+    const [isStravaUploading, setIsStravaUploading] = useState(false);
+    const [isStravaSuccess, setIsStravaSuccess] = useState(false);
     const [isEditingName, setIsEditingName] = useState(false);
     const [weather, setWeather] = useState<Awaited<ReturnType<typeof fetchWeather>>>(null);
+
+    const { isConnected: isStravaConnected, login: stravaLogin, isLoading: isStravaLoading } = useStravaAuth();
 
     const isDark = theme === 'dark';
     const brutalSheet = isDark
@@ -117,6 +123,35 @@ const BottomSheet: React.FC = () => {
         await copyUrlToClipboard({ waypoints: waypoints.map((w) => ({ position: w.position as [number, number], label: w.label, name: w.name })), routeType, routeName });
         setIsCopied(true);
         setTimeout(() => setIsCopied(false), 3000);
+    };
+
+    // FX — Strava Export
+    const handleStravaUpload = async () => {
+        if (!isStravaConnected) {
+            stravaLogin();
+            return;
+        }
+
+        if (!routeCoordinates.length) return;
+
+        setIsStravaUploading(true);
+        try {
+            const gpxContent = generateGpx({
+                routeName: routeName || 'VeloTrack Route',
+                coordinates: routeCoordinates,
+                summary: routeSummary,
+                elevationProfile,
+                routeType
+            });
+            const blob = new Blob([gpxContent], { type: 'application/gpx+xml' });
+            await uploadToStrava(blob, routeName || 'Mon parcours VeloTrack');
+            setIsStravaSuccess(true);
+            setTimeout(() => setIsStravaSuccess(false), 3000);
+        } catch (err: any) {
+            alert(`Erreur Strava: ${err.message}`);
+        } finally {
+            setIsStravaUploading(false);
+        }
     };
 
     const canCloseLoop = waypoints.length >= 2 && (() => {
@@ -270,21 +305,34 @@ const BottomSheet: React.FC = () => {
 
                         {/* Action buttons row */}
                         {routeCoordinates.length > 0 && (
-                            <div className="grid grid-cols-3 gap-2 mb-3">
+                            <div className="grid grid-cols-2 gap-2 mb-3">
                                 <motion.button onClick={handleExportGpx} whileTap={{ scale: 0.95 }}
-                                    className={`py-2 px-1 font-bold text-xs flex flex-col items-center gap-1 transition-all border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] ${isExported ? 'bg-emerald-400 text-slate-900' : 'bg-brand-primary text-white hover:brightness-110 active:translate-y-1 active:shadow-none'}`}>
+                                    className={`py-3 px-1 font-bold text-xs flex items-center justify-center gap-2 transition-all border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] ${isExported ? 'bg-emerald-400 text-slate-900' : 'bg-brand-primary text-white hover:brightness-110 active:translate-y-1 active:shadow-none'}`}>
                                     {isExported ? <CheckCircle2 className="w-5 h-5" /> : <Download className="w-5 h-5" />}
-                                    <span className="uppercase tracking-tight">{isExported ? 'OK!' : 'GPX'}</span>
+                                    <span className="uppercase tracking-tight">{isExported ? 'Prêt !' : 'Export GPX'}</span>
                                 </motion.button>
+
+                                <motion.button
+                                    onClick={handleStravaUpload}
+                                    disabled={isStravaLoading || isStravaUploading}
+                                    whileTap={{ scale: 0.95 }}
+                                    className={`py-3 px-1 font-bold text-xs flex items-center justify-center gap-2 transition-all border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] ${isStravaSuccess ? 'bg-emerald-400 text-slate-900' : 'bg-[#FC4C02] text-white hover:brightness-110 active:translate-y-1 active:shadow-none'}`}>
+                                    {isStravaUploading || isStravaLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (isStravaSuccess ? <CheckCircle2 className="w-5 h-5" /> : <Activity className="w-5 h-5" />)}
+                                    <span className="uppercase tracking-tight">
+                                        {isStravaUploading ? 'Envoi...' : (isStravaSuccess ? 'Envoyé !' : (isStravaConnected ? 'Strava' : 'Connecter Strava'))}
+                                    </span>
+                                </motion.button>
+
                                 <motion.button onClick={handleSave} whileTap={{ scale: 0.95 }}
-                                    className={`py-2 px-1 font-bold text-xs flex flex-col items-center gap-1 transition-all border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] ${isSaved ? 'bg-emerald-400 text-slate-900' : isDark ? 'bg-slate-800 text-slate-100 hover:bg-slate-700 active:translate-y-1 active:shadow-none' : 'bg-white text-slate-900 hover:bg-slate-100 active:translate-y-1 active:shadow-none'}`}>
+                                    className={`py-2 px-1 font-bold text-xs flex items-center justify-center gap-2 transition-all border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] ${isSaved ? 'bg-emerald-400 text-slate-900' : isDark ? 'bg-slate-800 text-slate-100 hover:bg-slate-700 active:translate-y-1 active:shadow-none' : 'bg-white text-slate-900 hover:bg-slate-100 active:translate-y-1 active:shadow-none'}`}>
                                     {isSaved ? <CheckCircle2 className="w-5 h-5" /> : <BookmarkPlus className="w-5 h-5" />}
-                                    <span className="uppercase tracking-tight">{isSaved ? 'OK' : 'Sauver'}</span>
+                                    <span className="uppercase tracking-tight">Favoris</span>
                                 </motion.button>
+
                                 <motion.button onClick={handleShare} whileTap={{ scale: 0.95 }}
-                                    className={`py-2 px-1 font-bold text-xs flex flex-col items-center gap-1 transition-all border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] ${isCopied ? 'bg-emerald-400 text-slate-900' : isDark ? 'bg-slate-800 text-slate-100 hover:bg-slate-700 active:translate-y-1 active:shadow-none' : 'bg-white text-slate-900 hover:bg-slate-100 active:translate-y-1 active:shadow-none'}`}>
+                                    className={`py-2 px-1 font-bold text-xs flex items-center justify-center gap-2 transition-all border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] ${isCopied ? 'bg-emerald-400 text-slate-900' : isDark ? 'bg-slate-800 text-slate-100 hover:bg-slate-700 active:translate-y-1 active:shadow-none' : 'bg-white text-slate-900 hover:bg-slate-100 active:translate-y-1 active:shadow-none'}`}>
                                     {isCopied ? <Copy className="w-5 h-5" /> : <Share2 className="w-5 h-5" />}
-                                    <span className="uppercase tracking-tight">{isCopied ? 'OK' : 'Partager'}</span>
+                                    <span className="uppercase tracking-tight">Partager</span>
                                 </motion.button>
                             </div>
                         )}
@@ -315,32 +363,6 @@ const BottomSheet: React.FC = () => {
                                             </div>
                                         </div>
                                         <ElevationChart profile={elevationProfile} isDark={isDark} />
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-
-                        {/* Maneuvers List (TBT) */}
-                        <AnimatePresence>
-                            {maneuvers.length > 0 && (
-                                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mb-4">
-                                    <p className={`text-[10px] uppercase font-black tracking-widest ${subtle} mb-3 ml-1`}>Feuille de route</p>
-                                    <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                                        {maneuvers.map((m, i) => (
-                                            <div key={i} className={`${cardBg} p-3 flex items-start gap-3`}>
-                                                <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 border-2 border-slate-800 flex items-center justify-center flex-shrink-0 text-lg">
-                                                    {i === 0 ? '🚩' : i === maneuvers.length - 1 ? '🏁' : '↪️'}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-sm font-bold leading-snug">{m.instruction}</p>
-                                                    <div className={`flex items-center gap-2 mt-1 text-[10px] uppercase font-black ${subtle}`}>
-                                                        <span>{formatDistance(m.length)}</span>
-                                                        <span className="opacity-40">•</span>
-                                                        <span>{formatDuration(m.time)}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
                                     </div>
                                 </motion.div>
                             )}

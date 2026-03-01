@@ -16,18 +16,17 @@
 - [x] Modèle de calcul des Calories (Physique réaliste)
 - [x] Affichage du VAM (Vitesse Ascensionnelle Moyenne)
 
-## ✅ Phase 3 : Fonctionnalités Avancées (Terminé)
-- [x] **Assistant IA (Groq)** : Génération de boucles & trajets point-à-point
-- [x] **Feuille de route textuelle (TBT)** : Liste détaillée des manœuvres
-- [x] **Générateur de boucles** intelligent avec variabilité (Jitter)
-- [x] **Import/Export GPX** avec prévisualisation & renommage
+## ✅ Phase 3 : Fonctionnalités Avancées (En cours)
+- [x] **Assistant IA (Groq)** : Générations intelligentes
+- [x] **Générateur de boucles** avec variabilité (Jitter)
+- [x] **Import/Export GPX**
 - [x] **Bibliothèque de routes** locale (Persistence)
-- [x] **Partage par URL** (Compression du state)
-- [x] **Module Météo** avec boussole de vent dynamique
+- [x] **Partage par URL**
+- [x] **Module Météo**
+- [ ] **Intégration API Strava** (Upload direct) — *En cours*
 
 ## 🚀 Future Roadmap (Idées)
 - [ ] Support du routage multi-points (plus de 10 points)
-- [ ] Intégration API Strava (Upload direct)
 - [ ] Photos & Points d'intérêt (POI) enrichis sur la carte
 - [ ] Comparaison de segments & Records personnels
 - [ ] Mode "Offline" avec stockage des tuiles carto
