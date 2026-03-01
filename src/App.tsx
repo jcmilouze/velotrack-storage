@@ -1,4 +1,3 @@
-import React from 'react';
 import MapView from './components/map/MapView';
 import OverlayUI from './components/ui/OverlayUI';
 import BottomSheet from './components/ui/BottomSheet';

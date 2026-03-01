@@ -5,7 +5,7 @@
  * Format: ?wps=lng1,lat1,name1|lng2,lat2,name2&type=road|gravel&name=Mon%20parcours
  */
 
-import type { Waypoint, RouteType } from '../store/useRouteStore';
+import type { RouteType } from '../store/useRouteStore';
 
 export interface SharedRouteState {
     waypoints: Array<{ position: [number, number]; label: string; name?: string }>;
