@@ -115,12 +115,15 @@ const parseValhallaResponse = (data: any) => {
         }
     }
 
+    const snappedLocations = data.trip.locations?.map((loc: any) => [loc.lon, loc.lat] as [number, number]);
+
     return {
         routeGeometry: {
             type: 'Feature', properties: { summary },
             geometry: { type: 'LineString', coordinates: allCoords },
         },
         summary, maneuvers: allManeuvers, coordinates: allCoords,
+        snappedLocations
     };
 };
 
@@ -139,6 +142,7 @@ const parseOSRMResponse = (data: any) => {
     const route = data.routes[0];
     const coords: number[][] = route.geometry.coordinates;
     const summary: RouteSummary = { length: route.distance / 1000, time: route.duration, cost: 0 };
+    const snappedLocations = data.waypoints?.map((wp: any) => wp.location as [number, number]);
     return {
         routeGeometry: { type: 'Feature', properties: { summary }, geometry: { type: 'LineString', coordinates: coords } },
         summary,
@@ -147,6 +151,7 @@ const parseOSRMResponse = (data: any) => {
             length: s.distance / 1000, time: s.duration, type: 2,
         })),
         coordinates: coords,
+        snappedLocations
     };
 };
 
@@ -182,6 +187,22 @@ export const calculateRoute = async (
         store.setManeuvers(result.maneuvers);
         store.setRouteCoordinates(result.coordinates);
         store.setIsBottomSheetOpen(true);
+
+        // Snap markers to the road if Valhalla/OSRM returns distinct snapped locations
+        if (result.snappedLocations) {
+            const currentWaypoints = store.waypoints;
+            result.snappedLocations.forEach((snappedPos: [number, number], i: number) => {
+                const currentWp = currentWaypoints[i];
+                if (currentWp) {
+                    const dx = Math.abs(currentWp.position[0] - snappedPos[0]);
+                    const dy = Math.abs(currentWp.position[1] - snappedPos[1]);
+                    // Only update if difference > ~1 meter to avoid infinite update loops
+                    if (dx > 0.00001 || dy > 0.00001) {
+                        store.updateWaypointPosition(currentWp.id, snappedPos);
+                    }
+                }
+            });
+        }
 
         fetchElevationProfile(result.coordinates).then((profile) => {
             if (profile) store.setElevationProfile(profile);
