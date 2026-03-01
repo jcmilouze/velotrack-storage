@@ -127,22 +127,11 @@ export const buildLoopWaypoints = (options: LoopOptions): Position[] => {
     }
 
     keyPoints.push(departure); // End the loop
-    // ... rest of logic remains
 
-    const wps: Position[] = [departure];
-    let currentPoint = departure;
-
-    // Interpolate points roughly every 10km
-    keyPoints.forEach(target => {
-        const dist = computeDistanceKm(currentPoint, target);
-        const segments = Math.max(1, Math.round(dist / 10)); // 1 point per ~10km
-
-        for (let i = 1; i <= segments; i++) {
-            const fraction = i / segments;
-            wps.push(interpolate(currentPoint, target, fraction));
-        }
-        currentPoint = target;
-    });
+    // We no longer interpolate points every 10km. 
+    // Interpolation forces Valhalla onto a geometric straight line, 
+    // destroying its ability to find detours around mountains or use flat valleys.
+    const wps: Position[] = [departure, ...keyPoints];
 
     return wps;
 };
