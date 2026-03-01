@@ -24,13 +24,13 @@ const OverlayUI: React.FC = () => {
         setElevationProfile, setRouteCoordinates,
         setIsBottomSheetOpen, addWaypoint, undoWaypoint,
         showLayers, setShowLayers, routeCoordinates, isBottomSheetOpen,
+        showLoop, setShowLoop
     } = useRouteStore();
 
-    const { zoomIn, zoomOut, flyTo } = useMapContext();
+    const { zoomIn, zoomOut, flyTo, fitBounds } = useMapContext();
     const { locate, isLocating } = useGeolocation();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const [showLoop, setShowLoop] = useState(false);
     const [showLibrary, setShowLibrary] = useState(false);
     const [gpxError, setGpxError] = useState<string | null>(null);
 
@@ -53,7 +53,6 @@ const OverlayUI: React.FC = () => {
         if (positions.length >= 2) {
             calculateRoute(positions, state.routeType);
         }
-        // Clean URL params without reload
         window.history.replaceState({}, '', window.location.pathname);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -99,7 +98,7 @@ const OverlayUI: React.FC = () => {
 
             // Fit map to route
             if (imported.coordinates.length) {
-                useMapContext().fitBounds(imported.coordinates);
+                fitBounds(imported.coordinates);
             }
 
             setIsBottomSheetOpen(true);
@@ -108,9 +107,8 @@ const OverlayUI: React.FC = () => {
         } finally {
             if (fileInputRef.current) fileInputRef.current.value = '';
         }
-    }, [clearRoute, setRouteName, setRouteGeometry, setRouteSummary, setManeuvers, setElevationProfile, setRouteCoordinates, addWaypoint, flyTo, setIsBottomSheetOpen]);
+    }, [clearRoute, setRouteName, setRouteGeometry, setRouteSummary, setManeuvers, setElevationProfile, setRouteCoordinates, addWaypoint, fitBounds, setIsBottomSheetOpen]);
 
-    // F8 — Toggle Waymarked Trails overlay
     const handleLayersToggle = () => setShowLayers(!showLayers);
 
     return (
@@ -138,8 +136,6 @@ const OverlayUI: React.FC = () => {
                                 className={`flex-1 py-1.5 text-xs font-bold transition-transform active:translate-y-[2px] ${routeType === 'gravel' ? 'bg-amber-400 text-slate-900 border-2 border-slate-800' : isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-800 hover:bg-slate-200'}`}
                             >🚵 Gravel</button>
                         </div>
-
-                        {/* Respan to fill the gap if needed, but road/gravel is flex-1 */}
 
                         {/* Undo & Reset */}
                         {waypoints.length > 0 && (
@@ -184,7 +180,7 @@ const OverlayUI: React.FC = () => {
                         <button onClick={() => fileInputRef.current?.click()} className={btn} title="Importer un GPX">
                             <Upload className="w-6 h-6" />
                         </button>
-                        <input ref={fileInputRef} type="file" accept=".gpx" className="hidden" onChange={handleGpxImport} />
+                        <input id="gpx-import-input" ref={fileInputRef} type="file" accept=".gpx" className="hidden" onChange={handleGpxImport} />
                         <div className={`h-1 mx-2 ${isDark ? 'bg-slate-700' : 'bg-slate-800'}`} />
                         {/* Layers */}
                         <button
@@ -202,7 +198,7 @@ const OverlayUI: React.FC = () => {
                         <div className={`h-1 mx-2 ${isDark ? 'bg-slate-700' : 'bg-slate-800'}`} />
                         {routeCoordinates.length > 0 && (
                             <>
-                                <button onClick={() => useMapContext().fitBounds(routeCoordinates)} className={btn} title="Centrer sur le parcours">
+                                <button onClick={() => fitBounds(routeCoordinates)} className={btn} title="Centrer sur le parcours">
                                     <Layers className="w-6 h-6 text-blue-500" />
                                 </button>
                                 <div className={`h-1 mx-2 ${isDark ? 'bg-slate-700' : 'bg-slate-800'}`} />
@@ -221,15 +217,18 @@ const OverlayUI: React.FC = () => {
                         {isDark ? <Sun className="w-6 h-6 text-amber-400" /> : <Moon className="w-6 h-6 text-slate-800" />}
                     </button>
 
-                    {/* Open sheet */}
+                    {/* Open/Close sheet Toggle */}
                     {routeSummary && (
                         <motion.button
                             initial={{ scale: 0 }} animate={{ scale: 1 }}
-                            onClick={() => setIsBottomSheetOpen(true)}
-                            className="bg-brand-primary text-white border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] p-4 flex items-center justify-center font-bold uppercase hover:brightness-110 active:translate-y-1 active:shadow-none transition-all"
-                            title="Voir les étapes"
+                            onClick={() => setIsBottomSheetOpen(!isBottomSheetOpen)}
+                            className="bg-brand-primary text-white border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] p-4 flex items-center justify-center font-bold uppercase hover:brightness-110 active:translate-y-1 active:shadow-none transition-all relative"
+                            title={isBottomSheetOpen ? "Réduire les infos" : "Ouvrir les infos"}
                         >
                             <MapPin className="w-6 h-6" />
+                            {!isBottomSheetOpen && (
+                                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-slate-800 animate-pulse" />
+                            )}
                         </motion.button>
                     )}
                 </motion.div>

@@ -43,6 +43,7 @@ interface RouteState {
     clickMode: ClickMode;
     isBottomSheetOpen: boolean;
     showLayers: boolean;         // F8 — display cycling network
+    showLoop: boolean;
 
     addWaypoint: (pos: Position, name?: string) => void;
     removeWaypoint: (id: string) => void;
@@ -63,6 +64,7 @@ interface RouteState {
     setClickMode: (mode: ClickMode) => void;
     setIsBottomSheetOpen: (open: boolean) => void;
     setShowLayers: (show: boolean) => void;
+    setShowLoop: (show: boolean) => void;
     closeLoop: () => void;
     clearRoute: () => void;
 
@@ -101,6 +103,7 @@ export const useRouteStore = create<RouteState>((set, get) => ({
     clickMode: 'setA',
     isBottomSheetOpen: false,
     showLayers: false,
+    showLoop: false,
 
     get pointA() { return get().waypoints[0]?.position ?? null; },
     get pointB() {
@@ -180,6 +183,7 @@ export const useRouteStore = create<RouteState>((set, get) => ({
     setClickMode: (mode) => set({ clickMode: mode }),
     setIsBottomSheetOpen: (open) => set({ isBottomSheetOpen: open }),
     setShowLayers: (show) => set({ showLayers: show }),
+    setShowLoop: (show) => set({ showLoop: show }),
 
     closeLoop: () => set((state) => {
         const { waypoints } = state;
