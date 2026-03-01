@@ -84,7 +84,7 @@ const generateId = () => {
     }
 };
 
-const LABELS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+const LABELS = Array.from({ length: 100 }, (_, i) => (i + 1).toString());
 
 export const useRouteStore = create<RouteState>((set, get) => ({
     waypoints: [],
@@ -114,7 +114,7 @@ export const useRouteStore = create<RouteState>((set, get) => ({
     setPointA: (pos) => set((state) => {
         if (!pos) return { waypoints: state.waypoints.slice(1) };
         const wps = [...state.waypoints];
-        const wp: Waypoint = { id: generateId(), position: pos, label: 'A' };
+        const wp: Waypoint = { id: generateId(), position: pos, label: '1' };
         if (!wps.length) return { waypoints: [wp] };
         wps[0] = wp;
         return { waypoints: wps };
@@ -126,7 +126,7 @@ export const useRouteStore = create<RouteState>((set, get) => ({
             return { waypoints: wps };
         }
         const wps = [...state.waypoints];
-        const label = LABELS[wps.length] ?? 'B';
+        const label = LABELS[wps.length] ?? '2';
         const wp: Waypoint = { id: generateId(), position: pos, label };
         if (wps.length < 2) return { waypoints: [...wps, wp] };
         wps[wps.length - 1] = wp;
@@ -196,7 +196,7 @@ export const useRouteStore = create<RouteState>((set, get) => ({
         const dy = start.position[1] - end.position[1];
         if (Math.abs(dx) < 0.0001 && Math.abs(dy) < 0.0001) return state;
 
-        const label = LABELS[waypoints.length] ?? `B`;
+        const label = LABELS[waypoints.length] ?? (waypoints.length + 1).toString();
         const wp: Waypoint = { id: generateId(), position: start.position, label, name: 'Retour départ' };
         return { waypoints: [...waypoints, wp] };
     }),

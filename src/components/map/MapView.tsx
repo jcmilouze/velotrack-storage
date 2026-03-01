@@ -7,9 +7,8 @@ import RouteLayer from './RouteLayer';
 import CyclingLayer from './CyclingLayer';
 
 const MARKER_COLORS: Record<string, string> = {
-    A: '#78BE20',
-    B: '#FC4C02',
-    default: '#3B82F6',
+    '1': '#78BE20', // Vert pour le départ
+    default: '#FC4C02', // Orange pour les étapes/arrivée
 };
 
 const MapView: React.FC = () => {
@@ -55,19 +54,8 @@ const MapView: React.FC = () => {
         el.appendChild(text);
         el.title = "Glisser pour déplacer. Clic-droit pour supprimer.";
 
-        // Prevent map interaction when interacting with markers
-        const stop = (e: MouseEvent) => {
-            e.stopPropagation();
-            if (e.type === 'mousedown') mapRef.current?.dragPan.disable();
-        };
-
-        el.addEventListener('mousedown', stop);
         el.addEventListener('click', (e) => e.stopPropagation());
         el.addEventListener('dblclick', (e) => e.stopPropagation());
-
-        // Re-enable pan on document mouseup to be safe
-        const onUp = () => mapRef.current?.dragPan.enable();
-        el.addEventListener('mouseup', onUp);
 
         // Handle quick deletion
         el.addEventListener('contextmenu', (e) => {
