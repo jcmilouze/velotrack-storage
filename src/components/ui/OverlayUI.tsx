@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Plus, Minus, Navigation, Sun, Moon, RotateCcw, Undo2, MapPin,
-    RefreshCw, FolderOpen, Layers, AlertTriangle
+    RefreshCw, FolderOpen, Layers, AlertTriangle, Upload
 } from 'lucide-react';
 import { useRouteStore } from '../../store/useRouteStore';
 import { useMapContext } from '../../context/MapContext';
@@ -23,7 +23,7 @@ const OverlayUI: React.FC = () => {
         setRouteGeometry, setRouteSummary, setManeuvers,
         setElevationProfile, setRouteCoordinates,
         setIsBottomSheetOpen, addWaypoint, undoWaypoint,
-        showLayers, setShowLayers, routeCoordinates, isBottomSheetOpen,
+        showLayers, setShowLayers, isBottomSheetOpen,
         showLoop, setShowLoop
     } = useRouteStore();
 
@@ -188,11 +188,15 @@ const OverlayUI: React.FC = () => {
                         <button onClick={zoomOut} className={btn} title="Zoom arrière"><Minus className="w-6 h-6" /></button>
                     </div>
 
-                    {/* Quick Access Actions (Visible when no route or as global shortcuts) */}
+                    {/* Quick Access Actions (Shortcuts when starting) */}
                     {!routeSummary && (
                         <div className={`${brutalBox} flex flex-col p-1`}>
                             <button onClick={() => setShowLoop(true)} className={btn} title="Générer une boucle">
                                 <RefreshCw className="w-6 h-6 text-brand-primary" />
+                            </button>
+                            <div className={`h-1 mx-2 ${isDark ? 'bg-slate-700' : 'bg-slate-800'}`} />
+                            <button onClick={() => fileInputRef.current?.click()} className={btn} title="Importer un GPX">
+                                <Upload className="w-6 h-6 text-emerald-500" />
                             </button>
                         </div>
                     )}
@@ -213,7 +217,7 @@ const OverlayUI: React.FC = () => {
                             initial={{ scale: 0 }} animate={{ scale: 1 }}
                             onClick={() => setIsBottomSheetOpen(!isBottomSheetOpen)}
                             className="bg-brand-primary text-white border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] p-4 flex items-center justify-center font-bold uppercase hover:brightness-110 active:translate-y-1 active:shadow-none transition-all relative"
-                            title={isBottomSheetOpen ? "Réduire les infos" : "Ouvrir les infos"}
+                            title={isBottomSheetOpen ? "Masquer les statistiques" : "Afficher les statistiques"}
                         >
                             <MapPin className="w-6 h-6" />
                             {!isBottomSheetOpen && (

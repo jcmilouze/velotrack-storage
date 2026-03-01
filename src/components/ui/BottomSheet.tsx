@@ -19,7 +19,7 @@ const BottomSheet: React.FC = () => {
         isBottomSheetOpen, setIsBottomSheetOpen,
         theme, elevationProfile, routeCoordinates,
         routeType, routeName, setRouteName,
-        waypoints, closeLoop, showLoop, setShowLoop,
+        waypoints, closeLoop, setShowLoop,
         routeSummary, maneuvers, clearRoute,
     } = useRouteStore();
 
@@ -96,11 +96,15 @@ const BottomSheet: React.FC = () => {
     const handleExportGpx = () => {
         if (!routeCoordinates.length) return;
         let finalName = routeName;
-        if (routeName === 'Mon parcours') {
-            const promptName = prompt('Nommez votre parcours pour l\'export :', routeName);
-            if (promptName) {
+        // Prompt for name if it's the default or empty
+        if (!routeName || routeName === 'Mon parcours' || routeName.trim() === '') {
+            const promptName = prompt('Nommez votre parcours pour l\'export GPX :', routeName || 'Mon parcours');
+            if (promptName && promptName.trim() !== '') {
                 finalName = promptName;
                 setRouteName(promptName);
+            } else {
+                // User cancelled or entered empty string, use default but don't save it
+                finalName = 'Parcours VeloTrack';
             }
         }
         downloadGpx({ routeName: finalName, coordinates: routeCoordinates, summary: routeSummary, elevationProfile, routeType });
@@ -270,7 +274,7 @@ const BottomSheet: React.FC = () => {
                                 <motion.button onClick={handleExportGpx} whileTap={{ scale: 0.95 }}
                                     className={`py-2 px-1 font-bold text-xs flex flex-col items-center gap-1 transition-all border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] ${isExported ? 'bg-emerald-400 text-slate-900' : 'bg-brand-primary text-white hover:brightness-110 active:translate-y-1 active:shadow-none'}`}>
                                     {isExported ? <CheckCircle2 className="w-5 h-5" /> : <Download className="w-5 h-5" />}
-                                    <span className="uppercase tracking-tight">{isExported ? 'Dist' : 'GPX'}</span>
+                                    <span className="uppercase tracking-tight">{isExported ? 'OK!' : 'GPX'}</span>
                                 </motion.button>
                                 <motion.button onClick={handleSave} whileTap={{ scale: 0.95 }}
                                     className={`py-2 px-1 font-bold text-xs flex flex-col items-center gap-1 transition-all border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] ${isSaved ? 'bg-emerald-400 text-slate-900' : isDark ? 'bg-slate-800 text-slate-100 hover:bg-slate-700 active:translate-y-1 active:shadow-none' : 'bg-white text-slate-900 hover:bg-slate-100 active:translate-y-1 active:shadow-none'}`}>
