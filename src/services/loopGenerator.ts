@@ -59,8 +59,8 @@ export interface LoopOptions {
     departure: Position;
     /** Target total distance in km */
     targetDistanceKm: number;
-    /** Compass direction for the outbound leg */
-    direction: CompassDirection;
+    /** Compass directions for the outbound legs */
+    directions: CompassDirection[];
 }
 
 /**
@@ -69,19 +69,33 @@ export interface LoopOptions {
  * for the outbound and return legs, creating a "true loop".
  */
 export const buildLoopWaypoints = (options: LoopOptions): Position[] => {
-    const { departure, targetDistanceKm, direction } = options;
-    const bearing = COMPASS_DIRECTIONS[direction];
+    const { departure, targetDistanceKm, directions } = options;
 
-    // To achieve the target distance and avoid out-and-back, we design a rough diamond/kite shape.
-    // The furthest point is at roughly Distance / 3.5.
-    // The lateral points create the width of the loop to ensure the return path is different.
-    const maxDist = targetDistanceKm / 3.5;
-    const lateralDist = targetDistanceKm / 5;
+    // We insert 1 intermediate point per direction.
+    // To maintain the target distance, we scale the leg distances.
+    const numDirs = directions.length;
 
-    // We add 45 degrees to the chosen bearing for the lateral width
-    const pt1 = computeDestination(departure, bearing + 45, lateralDist);
-    const pt2 = computeDestination(departure, bearing, maxDist);
-    const pt3 = computeDestination(departure, bearing - 45, lateralDist);
+    // Theoretical max distance reach from departure based on total distance
+    // For a single direction loop, it was 3.5. 
+    // If we have 3 directions (e.g. N -> E -> S), we are doing a larger arc.
+    const reachFactor = numDirs === 1 ? 3.5 : numDirs === 2 ? 4.5 : 5.5;
+    const legDist = targetDistanceKm / reachFactor;
 
-    return [departure, pt1, pt2, pt3, departure];
+    const wps: Position[] = [departure];
+
+    directions.forEach((dir) => {
+        const bearing = COMPASS_DIRECTIONS[dir];
+        // If it's the only direction, add lateral points for a wider loop
+        if (numDirs === 1) {
+            wps.push(computeDestination(departure, bearing + 40, legDist * 0.7));
+            wps.push(computeDestination(departure, bearing, legDist));
+            wps.push(computeDestination(departure, bearing - 40, legDist * 0.7));
+        } else {
+            // Sequential directions
+            wps.push(computeDestination(departure, bearing, legDist));
+        }
+    });
+
+    wps.push(departure);
+    return wps;
 };

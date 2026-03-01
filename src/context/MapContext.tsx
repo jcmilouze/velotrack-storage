@@ -11,6 +11,7 @@ interface MapContextValue {
     zoomIn: () => void;
     zoomOut: () => void;
     flyTo: (lng: number, lat: number, zoom?: number) => void;
+    fitBounds: (coords: number[][]) => void;
 }
 
 const MapContext = createContext<MapContextValue | null>(null);
@@ -71,8 +72,21 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children, theme }) => 
         mapRef.current?.flyTo({ center: [lng, lat], zoom, duration: 1000 });
     }, []);
 
+    const fitBounds = useCallback((coords: number[][]) => {
+        const map = mapRef.current;
+        if (!map || coords.length === 0) return;
+
+        const bounds = new maplibregl.LngLatBounds();
+        coords.forEach((coord) => bounds.extend(coord as [number, number]));
+
+        map.fitBounds(bounds, {
+            padding: { top: 100, bottom: 350, left: 50, right: 50 },
+            duration: 1000
+        });
+    }, []);
+
     return (
-        <MapContext.Provider value={{ mapRef, isLoaded, zoomIn, zoomOut, flyTo }}>
+        <MapContext.Provider value={{ mapRef, isLoaded, zoomIn, zoomOut, flyTo, fitBounds }}>
             {children}
         </MapContext.Provider>
     );

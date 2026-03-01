@@ -24,7 +24,7 @@ const DIRECTION_LABELS: Record<CompassDirection, string> = {
 
 const LoopModal: React.FC<Props> = ({ onClose, isDark }) => {
     const [distance, setDistance] = useState(50);
-    const [direction, setDirection] = useState<CompassDirection>('N');
+    const [directions, setDirections] = useState<CompassDirection[]>(['N']);
     const { waypoints, routeType, clearRoute } = useRouteStore();
     const { mapRef } = useMapContext();
 
@@ -49,24 +49,36 @@ const LoopModal: React.FC<Props> = ({ onClose, isDark }) => {
         const loopWaypoints = buildLoopWaypoints({
             departure,
             targetDistanceKm: distance,
-            direction,
+            directions,
         });
 
         // Set waypoints in store then trigger calculation
         const store = useRouteStore.getState();
-        // Set departure
         store.setPointA(loopWaypoints[0]);
-        // Add intermediate points to force a wide loop
-        store.addWaypoint(loopWaypoints[1], `Étape aller`);
-        store.addWaypoint(loopWaypoints[2], `Point ${direction}`);
-        store.addWaypoint(loopWaypoints[3], `Étape retour`);
-        // Add return to departure as final waypoint
-        store.addWaypoint(loopWaypoints[4], 'Retour départ');
+
+        // Add all calculated midpoints
+        loopWaypoints.slice(1, -1).forEach((pos, i) => {
+            store.addWaypoint(pos, `Étape ${i + 1}`);
+        });
+
+        // Add return to departure
+        store.addWaypoint(loopWaypoints[loopWaypoints.length - 1], 'Retour départ');
 
         // Calculate the loop
         await calculateRoute(loopWaypoints, routeType);
         onClose();
-    }, [departure, distance, direction, routeType, clearRoute, onClose]);
+    }, [departure, distance, directions, routeType, clearRoute, onClose]);
+
+    const toggleDirection = (dir: CompassDirection) => {
+        setDirections(prev => {
+            if (prev.includes(dir)) {
+                if (prev.length === 1) return prev; // Must have 1
+                return prev.filter(d => d !== dir);
+            }
+            if (prev.length >= 3) return prev; // Limit to 3
+            return [...prev, dir];
+        });
+    };
 
     return (
         <motion.div
@@ -126,8 +138,8 @@ const LoopModal: React.FC<Props> = ({ onClose, isDark }) => {
                                 ) : (
                                     <button
                                         key={dir}
-                                        onClick={() => setDirection(dir)}
-                                        className={`w-12 h-12 text-xl font-bold transition-transform active:translate-y-1 active:shadow-none border-[2px] border-slate-800 shadow-[2px_2px_0px_#1e293b] rounded-xl ${direction === dir
+                                        onClick={() => toggleDirection(dir)}
+                                        className={`w-12 h-12 text-xl font-bold transition-transform active:translate-y-1 active:shadow-none border-[2px] border-slate-800 shadow-[2px_2px_0px_#1e293b] rounded-xl ${directions.includes(dir)
                                             ? 'bg-brand-primary text-white'
                                             : isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-white text-slate-900 hover:bg-slate-50'
                                             }`}
@@ -139,7 +151,9 @@ const LoopModal: React.FC<Props> = ({ onClose, isDark }) => {
                             ))
                         )}
                     </div>
-                    <p className={`text-center text-xs font-bold ${subtle} mt-3 uppercase`}>Direction : <strong>{direction}</strong></p>
+                    <p className={`text-center text-xs font-bold ${subtle} mt-3 uppercase`}>
+                        {directions.length} direction{directions.length > 1 ? 's' : ''} : <strong>{directions.join(' → ')}</strong>
+                    </p>
                 </div>
 
                 {/* Generate button */}

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     ChevronDown, MapPin, Clock, RotateCcw, ArrowUpCircle, ArrowDownCircle,
-    Download, CheckCircle2, Edit3, BookmarkPlus, Share2, Copy, Flame, Wind,
+    Download, CheckCircle2, Edit3, BookmarkPlus, Share2, Copy, Flame,
     CornerDownRight, Navigation
 } from 'lucide-react';
 import { useRouteStore } from '../../store/useRouteStore';
@@ -105,7 +105,17 @@ const BottomSheet: React.FC = () => {
     // F4 — Export GPX
     const handleExportGpx = () => {
         if (!routeCoordinates.length) return;
-        downloadGpx({ routeName, coordinates: routeCoordinates, summary: routeSummary, elevationProfile, routeType });
+
+        let finalName = routeName;
+        if (routeName === 'Mon parcours') {
+            const promptName = prompt('Nommez votre parcours pour l\'export :', routeName);
+            if (promptName) {
+                finalName = promptName;
+                setRouteName(promptName);
+            }
+        }
+
+        downloadGpx({ routeName: finalName, coordinates: routeCoordinates, summary: routeSummary, elevationProfile, routeType });
         setIsExported(true);
         setTimeout(() => setIsExported(false), 3000);
     };
@@ -157,8 +167,8 @@ const BottomSheet: React.FC = () => {
                                 />
                             ) : (
                                 <button onClick={() => setIsEditingName(true)} className="flex-1 flex items-center gap-2 text-left group min-w-0" title="Renommer">
-                                    <span className="text-xl font-bold truncate">{routeName}</span>
-                                    <Edit3 className={`w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity ${subtle}`} />
+                                    <span className="text-xl font-black truncate border-b-2 border-transparent group-hover:border-slate-400 group-hover:bg-slate-100 dark:group-hover:bg-slate-800 px-1 -ml-1 transition-colors">{routeName}</span>
+                                    <Edit3 className={`w-4 h-4 transition-opacity flex-shrink-0 ${subtle}`} />
                                 </button>
                             )}
                             <span className={`px-2 py-0.5 border-2 border-slate-800 text-xs font-bold flex-shrink-0 shadow-[2px_2px_0px_#1e293b] ${routeType === 'gravel' ? 'bg-amber-400 text-slate-900' : 'bg-brand-primary text-white'}`}>
@@ -172,27 +182,27 @@ const BottomSheet: React.FC = () => {
 
                         {/* F7 — Weather */}
                         {weather && (
-                            <div className={`${cardBg} px-3 py-2 flex items-center gap-3 mb-3`}>
-                                <span className="text-2xl">{getWeatherDescription(weather.weatherCode).icon}</span>
+                            <div className={`${cardBg} px-4 py-2 flex items-center gap-4 mb-4`}>
+                                <span className="text-3xl filter drop-shadow-sm">{getWeatherDescription(weather.weatherCode).icon}</span>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-semibold">{getWeatherDescription(weather.weatherCode).label}</p>
+                                    <p className="text-xs uppercase font-black tracking-widest opacity-60">Météo au départ</p>
+                                    <div className="flex items-baseline gap-3">
+                                        <span className="font-black text-lg leading-tight">{weather.temperature}°C</span>
+                                        <span className={`text-[11px] font-bold ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>{getWeatherDescription(weather.weatherCode).label}</span>
+                                    </div>
                                     <div className={`mt-1 flex items-center gap-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                                        <span className="font-bold text-sm">{weather.temperature}°C</span>
-                                        <span className="opacity-40">·</span>
-                                        <span className="text-sm font-semibold flex items-center gap-1.5">
-                                            Vent {weather.windSpeed} km/h
-                                            {/* Wind direction icon, rotated accordingly */}
-                                            <div
-                                                className={`flex items-center justify-center p-1 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}
-                                                style={{ transform: `rotate(${weather.windDirection}deg)` }}
-                                                title={`Direction: ${getWindDirection(weather.windDirection)}`}
-                                            >
-                                                <Navigation className="w-4 h-4 text-brand-primary" strokeWidth={3} />
-                                            </div>
+                                        <div
+                                            className={`flex items-center justify-center w-7 h-7 rounded-full border-2 ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-slate-100 border-slate-200'}`}
+                                            style={{ transform: `rotate(${weather.windDirection}deg)` }}
+                                            title={`Direction: ${getWindDirection(weather.windDirection)}`}
+                                        >
+                                            <Navigation className="w-4 h-4 text-brand-primary" fill="currentColor" />
+                                        </div>
+                                        <span className="text-[11px] font-black uppercase tracking-tight">
+                                            Vent {weather.windSpeed} km/h {getWindDirection(weather.windDirection)}
                                         </span>
                                     </div>
                                 </div>
-                                <Wind className={`w-4 h-4 ${subtle} flex-shrink-0`} />
                             </div>
                         )}
 

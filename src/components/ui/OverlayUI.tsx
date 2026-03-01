@@ -23,7 +23,7 @@ const OverlayUI: React.FC = () => {
         setRouteGeometry, setRouteSummary, setManeuvers,
         setElevationProfile, setRouteCoordinates,
         setIsBottomSheetOpen, addWaypoint, undoWaypoint,
-        showLayers, setShowLayers,
+        showLayers, setShowLayers, routeCoordinates, isBottomSheetOpen,
     } = useRouteStore();
 
     const { zoomIn, zoomOut, flyTo } = useMapContext();
@@ -97,9 +97,9 @@ const OverlayUI: React.FC = () => {
             // Set waypoints
             imported.waypoints.forEach((w) => addWaypoint(w.position, w.name));
 
-            // Center map on first point
+            // Fit map to route
             if (imported.coordinates.length) {
-                flyTo(imported.coordinates[0][0], imported.coordinates[0][1], 13);
+                useMapContext().fitBounds(imported.coordinates);
             }
 
             setIsBottomSheetOpen(true);
@@ -131,7 +131,7 @@ const OverlayUI: React.FC = () => {
                         <div className={`${brutalBox} flex p-1 gap-1 flex-1`}>
                             <button
                                 onClick={() => setRouteType('road')}
-                                className={`flex-1 py-1.5 text-xs font-bold transition-transform active:translate-y-[2px] ${routeType === 'road' ? 'bg-slate-800 text-white border-2 border-transparent' : isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-800 hover:bg-slate-200'}`}
+                                className={`flex-1 py-1.5 text-xs font-bold transition-transform active:translate-y-[2px] ${routeType === 'road' ? (isDark ? 'bg-slate-200 text-slate-900 border-2 border-slate-800' : 'bg-slate-800 text-white border-2 border-transparent') : isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-800 hover:bg-slate-200'}`}
                             >🚴 Route</button>
                             <button
                                 onClick={() => setRouteType('gravel')}
@@ -166,13 +166,13 @@ const OverlayUI: React.FC = () => {
                 {/* ── BOTTOM RIGHT: controls ── */}
                 <motion.div
                     initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.2 }}
-                    className="flex flex-col gap-3 pointer-events-auto self-end"
+                    className={`flex flex-col gap-3 pointer-events-auto self-end transition-all duration-300 ${isBottomSheetOpen ? 'mb-[50vh] md:mb-0' : 'mb-0'}`}
                 >
                     {/* Action group */}
                     <div className={`${brutalBox} flex flex-col p-1`}>
                         {/* Loop generator */}
-                        <button onClick={() => setShowLoop(true)} className={btn} title="Générer une boucle">
-                            <RefreshCw className="w-6 h-6" />
+                        <button onClick={() => setShowLoop(true)} className={btn} title="Générer une boucle (Auto-Route)">
+                            <RefreshCw className="w-6 h-6 text-brand-primary" />
                         </button>
                         <div className={`h-1 mx-2 ${isDark ? 'bg-slate-700' : 'bg-slate-800'}`} />
                         {/* Library */}
@@ -196,10 +196,18 @@ const OverlayUI: React.FC = () => {
                         </button>
                     </div>
 
-                    {/* Zoom */}
+                    {/* Zoom & Fit */}
                     <div className={`${brutalBox} flex flex-col p-1`}>
                         <button onClick={zoomIn} className={btn} title="Zoom avant"><Plus className="w-6 h-6" /></button>
                         <div className={`h-1 mx-2 ${isDark ? 'bg-slate-700' : 'bg-slate-800'}`} />
+                        {routeCoordinates.length > 0 && (
+                            <>
+                                <button onClick={() => useMapContext().fitBounds(routeCoordinates)} className={btn} title="Centrer sur le parcours">
+                                    <Layers className="w-6 h-6 text-blue-500" />
+                                </button>
+                                <div className={`h-1 mx-2 ${isDark ? 'bg-slate-700' : 'bg-slate-800'}`} />
+                            </>
+                        )}
                         <button onClick={zoomOut} className={btn} title="Zoom arrière"><Minus className="w-6 h-6" /></button>
                     </div>
 
