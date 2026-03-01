@@ -2,11 +2,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles, Send, X, Loader2 } from 'lucide-react';
 import { useRouteStore } from '../../store/useRouteStore';
-import { buildLoopWaypoints, type CompassDirection } from '../../services/loopGenerator';
+import { buildLoopWaypoints, computeDestination, COMPASS_DIRECTIONS, type CompassDirection } from '../../services/loopGenerator';
 import { calculateRoute } from '../../services/routingService';
 import { searchAddress } from '../../services/geocodingService';
 import { fetchWeather, getWeatherDescription } from '../../services/weatherService';
 import { findSegmentByName } from '../../services/segmentService';
+import { fetchNearestAmenity, type AmenityType } from '../../services/overpassService';
 
 interface Props {
     onClose: () => void;
@@ -22,6 +23,7 @@ interface AiResponse {
     elevation: 'flat' | 'hilly' | 'mountain';
     directions: CompassDirection[];
     poi?: string | null;
+    amenity?: AmenityType | null;
     avoidHighways: boolean;
     reply: string;
 }
@@ -120,7 +122,22 @@ const AiAssistant: React.FC<Props> = ({ onClose, isDark }) => {
                 clearRoute();
 
                 let poiPosition: [number, number] | undefined = undefined;
-                if (aiData.poi) {
+
+                if (aiData.amenity) {
+                    // Calcul du point central théorique pour chercher l'établissement
+                    const dir = aiData.directions?.length ? aiData.directions[0] : 'N';
+                    const bearing = COMPASS_DIRECTIONS[dir];
+                    // On cherche à la distance cible / 2 (le point le plus éloigné de la boucle)
+                    const midPoint = computeDestination(departure, bearing, aiData.distanceKm / 2.5);
+                    const amenityResult = await fetchNearestAmenity(midPoint, aiData.amenity, 15000); // 15km rayon
+                    
+                    if (amenityResult) {
+                        poiPosition = [amenityResult.position[0], amenityResult.position[1]];
+                        setResponseMsg(`${aiData.reply} (Étape : ${amenityResult.name} sélectionné)`);
+                    } else {
+                        console.warn("Overpass API found no amenity");
+                    }
+                } else if (aiData.poi) {
                     // Try segment database first
                     const knownSegment = findSegmentByName(aiData.poi);
                     if (knownSegment) {
@@ -208,7 +225,7 @@ const AiAssistant: React.FC<Props> = ({ onClose, isDark }) => {
                         <p className="font-bold text-lg">{responseMsg}</p>
                     ) : (
                         <p className="text-slate-400 font-bold uppercase text-sm tracking-wide">
-                            "Fais-moi une boucle gravel de 60km avec le vent dans le dos, en évitant les grosses routes."
+                            "Une boucle gravel de 60km au sud avec une pause café."
                         </p>
                     )}
                 </div>
