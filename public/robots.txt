@@ -1,0 +1,11 @@
+# VeloTrack Robots.txt
+User-agent: *
+Allow: /
+Allow: /index.html
+Allow: /assets/
+
+# Sitemap if available
+# Sitemap: https://velotrack.bessacvps.fr/sitemap.xml
+
+# Slow down heavy crawlers
+Crawl-delay: 10

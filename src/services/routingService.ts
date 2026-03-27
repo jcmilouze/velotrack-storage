@@ -80,15 +80,13 @@ const fetchFromValhalla = async (
     elevation?: 'flat' | 'hilly' | 'mountain'
 ) => {
     const query = {
-        locations: waypoints.map((p, index) => {
-            const isEndpoint = index === 0 || index === waypoints.length - 1;
+        locations: waypoints.map((p) => {
             return {
                 lat: p[1],
                 lon: p[0],
-                // "through" force l'algorithme à passer à travers sans s'arrêter, 
-                // interdisant les demi-tours. Cela évite totalement les petites
-                // impasses ou culs-de-sac (qui créent des "spurs" ou aller-retours).
-                type: isEndpoint ? 'break' : 'through',
+                // Utilisation de 'break' pour tous les points afin d'autoriser les demi-tours
+                // en cas d'impasse (évite l'erreur 400 Bad Request si 'through' échoue)
+                type: 'break',
                 // Rayon de recherche généreux pour s'accrocher à la route principale la plus proche
                 radius: 2000
             };
@@ -119,7 +117,18 @@ const parseValhallaResponse = (data: any) => {
         }
     }
 
-    const snappedLocations = data.trip.locations?.map((loc: any) => [loc.lon, loc.lat] as [number, number]);
+    const snappedLocations: [number, number][] = [];
+    if (data.trip.legs.length > 0) {
+        // The first location is the start of the first leg
+        const firstCoords = polyline.decode(data.trip.legs[0].shape, 6);
+        snappedLocations.push([firstCoords[0][1], firstCoords[0][0]]);
+        
+        // Subsequent locations are the ends of each leg
+        for (const leg of data.trip.legs) {
+            const coords = polyline.decode(leg.shape, 6);
+            snappedLocations.push([coords[coords.length - 1][1], coords[coords.length - 1][0]]);
+        }
+    }
 
     return {
         routeGeometry: {
@@ -176,13 +185,24 @@ export const getRouteData = async (
     avoidHighways: boolean = false,
     elevation?: 'flat' | 'hilly' | 'mountain'
 ) => {
+    let lastError: any = null;
+
+    // Tentative Valhalla
     try {
         const data = await fetchFromValhalla(waypoints, routeType, avoidHighways, elevation);
         return parseValhallaResponse(data);
     } catch (err) {
-        console.warn('Valhalla failed, trying OSRM...', err);
+        lastError = err;
+        console.warn('Valhalla failed or blocked, trying OSRM...', err);
+    }
+
+    // Fallback OSRM
+    try {
         const data = await fetchFromOSRM(waypoints);
         return parseOSRMResponse(data);
+    } catch (err) {
+        console.error('All routing engines failed', { valhalla: lastError, osrm: err });
+        throw new Error('Impossible de calculer l\'itinéraire (Serveurs saturés)');
     }
 };
 
@@ -197,18 +217,7 @@ export const commitRouteData = async (result: any) => {
 
     // Snap markers to the road if Valhalla/OSRM returns distinct snapped locations
     if (result.snappedLocations) {
-        const currentWaypoints = store.waypoints;
-        result.snappedLocations.forEach((snappedPos: [number, number], i: number) => {
-            const currentWp = currentWaypoints[i];
-            if (currentWp) {
-                const dx = Math.abs(currentWp.position[0] - snappedPos[0]);
-                const dy = Math.abs(currentWp.position[1] - snappedPos[1]);
-                // Only update if difference > ~1 meter to avoid infinite update loops
-                if (dx > 0.00001 || dy > 0.00001) {
-                    store.updateWaypointPosition(currentWp.id, snappedPos);
-                }
-            }
-        });
+        store.snapWaypoints(result.snappedLocations);
     }
 
     const profile = await fetchElevationProfile(result.coordinates);
@@ -233,6 +242,7 @@ export const calculateRoute = async (
     try {
         const result = await getRouteData(waypoints, routeType, avoid, elevation);
         await commitRouteData(result);
+        store.cleanupWaypoints();
 
 
     } catch (error) {
