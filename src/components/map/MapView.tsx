@@ -21,6 +21,7 @@ const MapView: React.FC = () => {
     const isLoading = useRouteStore((s) => s.isLoading);
     const error = useRouteStore((s) => s.error);
     const routeType = useRouteStore((s) => s.routeType);
+    const isLoopClosed = useRouteStore((s) => s.isLoopClosed);
 
     const { mapRef, isLoaded } = useMapContext();
 
@@ -45,7 +46,8 @@ const MapView: React.FC = () => {
         `;
         const text = document.createElement('span');
         text.className = 'marker-label';
-        text.textContent = label.length > 1 ? label.charAt(0) : label;
+        // Display a special icon if it's the fused start/end point
+        text.textContent = label === 'fusion' ? '🔄' : (label.length > 1 ? label.charAt(0) : label);
         text.style.cssText = `
             color: white; font-weight: 900;
             font-size: ${label.length > 1 ? '12px' : '16px'}; font-family: Inter, sans-serif;
@@ -73,9 +75,14 @@ const MapView: React.FC = () => {
         const map = mapRef.current;
         if (!map || !isLoaded) return;
 
-        const currentIds = new Set(waypoints.map((w) => w.id));
+        // If loop is closed, visually hide the last marker by slicing the array
+        const visibleWaypoints = isLoopClosed && waypoints.length >= 3 
+            ? waypoints.slice(0, -1) 
+            : waypoints;
 
-        // Remove markers for deleted waypoints
+        const currentIds = new Set(visibleWaypoints.map((w) => w.id));
+
+        // Remove markers for deleted waypoints or hidden merged points
         markersRef.current.forEach((marker, id) => {
             if (!currentIds.has(id)) {
                 marker.remove();
@@ -84,23 +91,40 @@ const MapView: React.FC = () => {
         });
 
         // Add/update markers for current waypoints
-        waypoints.forEach((wp) => {
+        visibleWaypoints.forEach((wp, index) => {
+            // If it's the first point of a closed loop, give it a fusion label
+            const isStartEndMerged = isLoopClosed && index === 0;
+            const displayLabel = isStartEndMerged ? 'fusion' : wp.label;
+
             const existingMarker = markersRef.current.get(wp.id);
             if (existingMarker) {
                 existingMarker.setLngLat([wp.position[0], wp.position[1]]);
-                // Update label text and color if store state changed (e.g. re-indexing)
                 const el = existingMarker.getElement();
                 const span = el.querySelector('.marker-label');
-                if (span) span.textContent = wp.label;
-                el.style.background = MARKER_COLORS[wp.label] ?? MARKER_COLORS.default;
+                if (span) span.textContent = displayLabel === 'fusion' ? '🔄' : displayLabel;
+                // Special style for fusion
+                if (isStartEndMerged) {
+                     el.style.background = '#000000'; // Black core for loop
+                     el.style.border = '4px solid #78BE20'; // Green rim for start/end
+                } else {
+                     el.style.background = MARKER_COLORS[wp.label] ?? MARKER_COLORS.default;
+                     el.style.border = '4px solid white';
+                }
             } else {
                 const marker = new maplibregl.Marker({
-                    element: createMarkerEl(wp.label, wp.id),
+                    element: createMarkerEl(displayLabel, wp.id),
                     anchor: 'center',
                     draggable: true,
                 })
                     .setLngLat([wp.position[0], wp.position[1]])
                     .addTo(map);
+
+                // Initialize fusion styling if just created
+                if (isStartEndMerged) {
+                     const el = marker.getElement();
+                     el.style.background = '#000000';
+                     el.style.border = '4px solid #78BE20';
+                }
 
                 marker.on('dragend', () => {
                     const lngLat = marker.getLngLat();
@@ -110,7 +134,7 @@ const MapView: React.FC = () => {
                 markersRef.current.set(wp.id, marker);
             }
         });
-    }, [waypoints, isLoaded, createMarkerEl, mapRef, updateWaypointPosition]);
+    }, [waypoints, isLoaded, isLoopClosed, createMarkerEl, mapRef, updateWaypointPosition]);
 
     // Update hover marker
     useEffect(() => {
@@ -164,6 +188,38 @@ const MapView: React.FC = () => {
             calculateRoute(waypoints.map((w) => w.position), routeType);
         }
     }, [waypoints, routeType]);
+
+    // Smart Zoom: Automatically fit bounds when route changes
+    const lastGeometryRef = useRef<string>('');
+    const { fitBounds } = useMapContext();
+    const routeGeometry = useRouteStore((s) => s.routeGeometry);
+
+    useEffect(() => {
+        if (!routeGeometry || !isLoaded || !mapRef.current) return;
+
+        const coords: number[][] = [];
+        if (routeGeometry.features && Array.isArray(routeGeometry.features)) {
+            routeGeometry.features.forEach((f: any) => {
+                if (f.geometry && f.geometry.type === 'LineString') {
+                    coords.push(...(f.geometry.coordinates as number[][]));
+                }
+            });
+        }
+
+        if (coords.length > 0) {
+            // Fingerprint based on first/last points and total length to detect meaningful changes
+            const currentGeomStr = `${coords[0][0]},${coords[0][1]}-${coords[coords.length - 1][0]},${coords[coords.length - 1][1]}-${coords.length}`;
+            if (currentGeomStr !== lastGeometryRef.current) {
+                lastGeometryRef.current = currentGeomStr;
+                // Defer to next tick to avoid interaction with ongoing render
+                setTimeout(() => {
+                    if (isLoaded && mapRef.current) {
+                        fitBounds(coords);
+                    }
+                }, 100);
+            }
+        }
+    }, [routeGeometry, isLoaded, mapRef, fitBounds]);
 
     // Cursor
     useEffect(() => {

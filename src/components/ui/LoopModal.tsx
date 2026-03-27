@@ -42,6 +42,14 @@ const LoopModal: React.FC<Props> = ({ onClose, isDark }) => {
         return [c.lng, c.lat] as [number, number];
     })();
 
+    // Auto-focus on departure point for context
+    const { flyTo } = useMapContext();
+    React.useEffect(() => {
+        if (departure) {
+            flyTo(departure[0], departure[1], 13);
+        }
+    }, [departure, flyTo]);
+
     const handleGenerate = useCallback(async () => {
         if (!departure) return;
         clearRoute();
