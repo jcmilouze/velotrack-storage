@@ -172,17 +172,16 @@ const BottomSheet: React.FC = () => {
                     className={`
                         absolute bottom-0 left-0 right-0 z-20 pointer-events-auto
                         md:bottom-5 md:left-auto md:right-20 md:w-96
-                        ${brutalSheet} overflow-hidden font-bold
+                        ${brutalSheet} flex flex-col font-bold
                     `}
-                    style={{ maxHeight: '82vh' }}
+                    style={{ maxHeight: '85vh' }}
                 >
-                    {/* Mobile handle */}
-                    <div className="flex justify-center pt-3 pb-1 md:hidden">
-                        <div className={`w-12 h-2 rounded-full border-[2px] ${isDark ? 'bg-slate-700 border-slate-700' : 'bg-slate-800 border-slate-800'}`} />
-                    </div>
+                    {/* Mobile handle & Header (Non-scrolling) */}
+                    <div className="flex-shrink-0 px-5 pt-3">
+                        <div className="flex justify-center mb-3 md:hidden">
+                            <div className={`w-12 h-1.5 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`} />
+                        </div>
 
-                    {/* Header — Route name */}
-                    <div className="px-5 pt-4 pb-0">
                         <div className="flex items-center gap-2 mb-4">
                             {isEditingName ? (
                                 <input autoFocus value={routeName}
@@ -202,29 +201,21 @@ const BottomSheet: React.FC = () => {
                                 <button onClick={() => setIsBottomSheetOpen(false)} className={`p-2 ${btnHover} rounded-full`} title="Fermer"><ChevronDown className="w-5 h-5" /></button>
                             </div>
                         </div>
+                    </div>
 
-                        {/* Quick Action Bar: Loop + Centrer + Import (Moved into the main Frame) */}
+                    {/* Scrollable Content */}
+                    <div className="flex-1 overflow-y-auto px-5 pb-8 custom-scrollbar">
+                        {/* Quick Action Bar */}
                         <div className="grid grid-cols-3 gap-2 mb-4">
-                            <button
-                                onClick={() => setShowLoop(true)}
-                                className={`py-3 ${cardBg} flex flex-col items-center justify-center gap-1 text-[11px] uppercase font-black hover:bg-brand-primary hover:text-white transition-all`}
-                            >
+                            <button onClick={() => setShowLoop(true)} className={`py-3 ${cardBg} flex flex-col items-center justify-center gap-1 text-[10px] md:text-[11px] uppercase font-black hover:bg-brand-primary hover:text-white transition-all rounded-xl`}>
                                 <RefreshCw className="w-5 h-5" />
                                 Boucle
                             </button>
-
-                            <button
-                                onClick={() => routeCoordinates.length ? fitBounds(routeCoordinates) : alert('Aucun tracé à centrer')}
-                                className={`py-3 ${cardBg} flex flex-col items-center justify-center gap-1 text-[11px] uppercase font-black hover:bg-blue-500 hover:text-white transition-all`}
-                            >
+                            <button onClick={() => routeCoordinates.length ? fitBounds(routeCoordinates) : alert('Aucun tracé à centrer')} className={`py-3 ${cardBg} flex flex-col items-center justify-center gap-1 text-[10px] md:text-[11px] uppercase font-black hover:bg-blue-500 hover:text-white transition-all rounded-xl`}>
                                 <Layers className="w-5 h-5" />
                                 Centrer
                             </button>
-
-                            <button
-                                onClick={() => document.getElementById('gpx-import-input')?.click()}
-                                className={`py-3 ${cardBg} flex flex-col items-center justify-center gap-1 text-[11px] uppercase font-black hover:bg-emerald-500 hover:text-white transition-all`}
-                            >
+                            <button onClick={() => document.getElementById('gpx-import-input')?.click()} className={`py-3 ${cardBg} flex flex-col items-center justify-center gap-1 text-[10px] md:text-[11px] uppercase font-black hover:bg-emerald-500 hover:text-white transition-all rounded-xl`}>
                                 <Upload className="w-5 h-5" />
                                 Import
                             </button>
@@ -232,7 +223,7 @@ const BottomSheet: React.FC = () => {
 
                         {/* F7 — Weather Centered */}
                         {weather && (
-                            <div className={`${cardBg} px-4 py-3 flex flex-col items-center gap-2 mb-4`}>
+                            <div className={`${cardBg} px-4 py-3 flex flex-col items-center gap-2 mb-4 rounded-2xl`}>
                                 <p className="text-[10px] uppercase font-black tracking-widest opacity-60">Météo au départ</p>
                                 <div className="flex items-center gap-4">
                                     <span className="text-4xl filter drop-shadow-sm">{getWeatherDescription(weather.weatherCode).icon}</span>
@@ -242,15 +233,10 @@ const BottomSheet: React.FC = () => {
                                     </div>
                                 </div>
                                 <div className={`flex items-center gap-3 mt-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-                                    <div
-                                        className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-slate-100 border-slate-200'}`}
-                                        style={{ transform: `rotate(${weather.windDirection}deg)` }}
-                                    >
+                                    <div className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${isDark ? 'bg-slate-700 border-slate-600' : 'bg-slate-100 border-slate-200'}`} style={{ transform: `rotate(${weather.windDirection}deg)` }}>
                                         <Navigation className="w-4 h-4 text-brand-primary" fill="currentColor" />
                                     </div>
-                                    <span className="text-xs font-black uppercase tracking-widest">
-                                        VENT {weather.windSpeed} km/h {getWindDirection(weather.windDirection)}
-                                    </span>
+                                    <span className="text-xs font-black uppercase tracking-widest">VENT {weather.windSpeed} km/h</span>
                                 </div>
                             </div>
                         )}
@@ -258,28 +244,28 @@ const BottomSheet: React.FC = () => {
                         {/* Bento Stats Grid */}
                         {routeSummary && (
                             <div className="grid grid-cols-4 gap-2 mb-4">
-                                <div className={`${cardBg} col-span-2 p-3 flex flex-col justify-between`}>
+                                <div className={`${cardBg} col-span-2 p-3 flex flex-col justify-between rounded-xl`}>
                                     <div className="flex items-center gap-2 mb-2">
                                         <MapPin className="w-4 h-4 text-brand-primary" />
-                                        <span className={`text-[10px] uppercase font-black tracking-widest ${subtle}`}>Distance</span>
+                                        <span className={`text-[9px] uppercase font-black tracking-widest ${subtle}`}>Distance</span>
                                     </div>
                                     <span className="font-black text-2xl leading-none">{formatDistance(routeSummary.length)}</span>
                                 </div>
-                                <div className={`${cardBg} col-span-2 p-3 flex flex-col justify-between`}>
+                                <div className={`${cardBg} col-span-2 p-3 flex flex-col justify-between rounded-xl`}>
                                     <div className="flex items-center gap-2 mb-2">
                                         <Clock className="w-4 h-4 text-blue-500" />
-                                        <span className={`text-[10px] uppercase font-black tracking-widest ${subtle}`}>Temps Est.</span>
+                                        <span className={`text-[9px] uppercase font-black tracking-widest ${subtle}`}>Temps Est.</span>
                                     </div>
                                     <span className="font-black text-2xl leading-none">{formatDuration(routeSummary.time)}</span>
                                 </div>
                                 {elevationProfile && (
                                     <>
-                                        <div className={`${cardBg} col-span-1 p-2 flex flex-col items-center justify-center text-center`}>
+                                        <div className={`${cardBg} col-span-1 p-2 flex flex-col items-center justify-center text-center rounded-xl`}>
                                             <ArrowUpCircle className="w-5 h-5 mb-1 text-emerald-500" />
                                             <span className="font-bold text-sm leading-none">{elevationProfile.ascent}m</span>
                                             <span className={`text-[8px] uppercase font-bold mt-1 ${subtle}`}>D+</span>
                                         </div>
-                                        <div className={`${cardBg} col-span-1 p-2 flex flex-col items-center justify-center text-center`}>
+                                        <div className={`${cardBg} col-span-1 p-2 flex flex-col items-center justify-center text-center rounded-xl`}>
                                             <ArrowDownCircle className="w-5 h-5 mb-1 text-orange-500" />
                                             <span className="font-bold text-sm leading-none">{elevationProfile.descent}m</span>
                                             <span className={`text-[8px] uppercase font-bold mt-1 ${subtle}`}>D-</span>
@@ -287,15 +273,15 @@ const BottomSheet: React.FC = () => {
                                     </>
                                 )}
                                 {kcal && (
-                                    <div className={`${cardBg} col-span-1 p-2 flex flex-col items-center justify-center text-center`}>
-                                        <Flame className="w-5 h-5 mb-1 text-orange-500" />
+                                    <div className={`${cardBg} col-span-1 p-2 flex flex-col items-center justify-center text-center rounded-xl`}>
+                                        <Flame className="w-5 h-5 mb-1 text-neo-red" />
                                         <span className="font-bold text-sm leading-none">{kcal}</span>
                                         <span className={`text-[8px] uppercase font-bold mt-1 ${subtle}`}>Kcal</span>
                                     </div>
                                 )}
                                 {vam && (
-                                    <div className={`${cardBg} col-span-1 p-2 flex flex-col items-center justify-center text-center`}>
-                                        <ArrowUpCircle className="w-5 h-5 mb-1 text-emerald-500" />
+                                    <div className={`${cardBg} col-span-1 p-2 flex flex-col items-center justify-center text-center rounded-xl`}>
+                                        <Activity className="w-5 h-5 mb-1 text-brand-primary" />
                                         <span className="font-bold text-sm leading-none">{vam}</span>
                                         <span className={`text-[8px] uppercase font-bold mt-1 ${subtle}`}>VAM</span>
                                     </div>
@@ -305,34 +291,16 @@ const BottomSheet: React.FC = () => {
 
                         {/* Action buttons row */}
                         {routeCoordinates.length > 0 && (
-                            <div className="grid grid-cols-2 gap-2 mb-3">
+                            <div className="grid grid-cols-2 gap-2 mb-4">
                                 <motion.button onClick={handleExportGpx} whileTap={{ scale: 0.95 }}
-                                    className={`py-3 px-1 font-bold text-xs flex items-center justify-center gap-2 transition-all border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] ${isExported ? 'bg-emerald-400 text-slate-900' : 'bg-brand-primary text-white hover:brightness-110 active:translate-y-1 active:shadow-none'}`}>
+                                    className={`py-3 px-1 font-black text-xs flex items-center justify-center gap-2 transition-all border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] rounded-xl ${isExported ? 'bg-emerald-400 text-slate-900' : 'bg-brand-primary text-white hover:brightness-110 active:translate-y-1 active:shadow-none'}`}>
                                     {isExported ? <CheckCircle2 className="w-5 h-5" /> : <Download className="w-5 h-5" />}
-                                    <span className="uppercase tracking-tight">{isExported ? 'Prêt !' : 'Export GPX'}</span>
+                                    <span className="uppercase tracking-tight">Export GPX</span>
                                 </motion.button>
-
-                                <motion.button
-                                    onClick={handleStravaUpload}
-                                    disabled={isStravaLoading || isStravaUploading}
-                                    whileTap={{ scale: 0.95 }}
-                                    className={`py-3 px-1 font-bold text-xs flex items-center justify-center gap-2 transition-all border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] ${isStravaSuccess ? 'bg-emerald-400 text-slate-900' : 'bg-[#FC4C02] text-white hover:brightness-110 active:translate-y-1 active:shadow-none'}`}>
-                                    {isStravaUploading || isStravaLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (isStravaSuccess ? <CheckCircle2 className="w-5 h-5" /> : <Activity className="w-5 h-5" />)}
-                                    <span className="uppercase tracking-tight">
-                                        {isStravaUploading ? 'Envoi...' : (isStravaSuccess ? 'Envoyé !' : (isStravaConnected ? 'Strava' : 'Connecter Strava'))}
-                                    </span>
-                                </motion.button>
-
-                                <motion.button onClick={handleSave} whileTap={{ scale: 0.95 }}
-                                    className={`py-2 px-1 font-bold text-xs flex items-center justify-center gap-2 transition-all border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] ${isSaved ? 'bg-emerald-400 text-slate-900' : isDark ? 'bg-slate-800 text-slate-100 hover:bg-slate-700 active:translate-y-1 active:shadow-none' : 'bg-white text-slate-900 hover:bg-slate-100 active:translate-y-1 active:shadow-none'}`}>
-                                    {isSaved ? <CheckCircle2 className="w-5 h-5" /> : <BookmarkPlus className="w-5 h-5" />}
-                                    <span className="uppercase tracking-tight">Favoris</span>
-                                </motion.button>
-
-                                <motion.button onClick={handleShare} whileTap={{ scale: 0.95 }}
-                                    className={`py-2 px-1 font-bold text-xs flex items-center justify-center gap-2 transition-all border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] ${isCopied ? 'bg-emerald-400 text-slate-900' : isDark ? 'bg-slate-800 text-slate-100 hover:bg-slate-700 active:translate-y-1 active:shadow-none' : 'bg-white text-slate-900 hover:bg-slate-100 active:translate-y-1 active:shadow-none'}`}>
-                                    {isCopied ? <Copy className="w-5 h-5" /> : <Share2 className="w-5 h-5" />}
-                                    <span className="uppercase tracking-tight">Partager</span>
+                                <motion.button onClick={handleStravaUpload} disabled={isStravaLoading || isStravaUploading} whileTap={{ scale: 0.95 }}
+                                    className={`py-3 px-1 font-black text-xs flex items-center justify-center gap-2 transition-all border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] rounded-xl ${isStravaSuccess ? 'bg-emerald-400 text-slate-900' : 'bg-[#FC4C02] text-white hover:brightness-110 active:translate-y-1 active:shadow-none'}`}>
+                                    {isStravaUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : (isStravaSuccess ? <CheckCircle2 className="w-5 h-5" /> : <Activity className="w-5 h-5" />)}
+                                    <span className="uppercase tracking-tight">Strava</span>
                                 </motion.button>
                             </div>
                         )}
@@ -343,7 +311,7 @@ const BottomSheet: React.FC = () => {
                                 initial={{ opacity: 0, scale: 0.95 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 onClick={closeLoop}
-                                className={`w-full mb-3 flex items-center justify-center gap-2 py-3 border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] text-sm uppercase font-bold transition-all active:translate-y-1 active:shadow-none bg-[#f1f1eb] text-slate-800 hover:brightness-95`}
+                                className={`w-full mb-4 flex items-center justify-center gap-2 py-4 border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] text-sm uppercase font-black transition-all active:translate-y-1 active:shadow-none bg-brand-primary text-white hover:brightness-110 rounded-xl`}
                             >
                                 <CornerDownRight className="w-5 h-5" />
                                 Fermer la boucle
@@ -351,24 +319,19 @@ const BottomSheet: React.FC = () => {
                         )}
 
                         {/* Elevation Chart Section */}
-                        <AnimatePresence>
-                            {elevationProfile && (
-                                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mb-3">
-                                    <div className={`${cardBg} p-3 overflow-hidden`}>
-                                        <div className="flex items-center justify-between mb-4">
-                                            <p className={`text-[10px] uppercase font-black tracking-widest ${subtle}`}>Profil Altimétrique</p>
-                                            <div className="flex gap-3">
-                                                <span className="text-xs font-black">Min: {elevationProfile.minElevation}m</span>
-                                                <span className="text-xs font-black">Max: {elevationProfile.maxElevation}m</span>
-                                            </div>
+                        {elevationProfile && (
+                            <div className="mb-4">
+                                <div className={`${cardBg} p-3 rounded-2xl overflow-hidden`}>
+                                    <div className="flex items-center justify-between mb-4">
+                                        <p className={`text-[10px] uppercase font-black tracking-widest ${subtle}`}>Profil Altimétrique</p>
+                                        <div className="flex gap-3">
+                                            <span className="text-[10px] font-black uppercase">Max: {elevationProfile.maxElevation}m</span>
                                         </div>
-                                        <ElevationChart profile={elevationProfile} isDark={isDark} />
                                     </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-
-                        <div className={`h-[3px] ${divider} mb-4`} />
+                                    <ElevationChart profile={elevationProfile} isDark={isDark} />
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </motion.div>
             )}

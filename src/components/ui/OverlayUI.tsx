@@ -120,33 +120,33 @@ const OverlayUI: React.FC = () => {
                 {/* ── TOP ── */}
                 <motion.div
                     initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }}
-                    className="w-full max-w-md mx-auto pointer-events-auto space-y-2"
+                    className="w-full max-w-md mx-auto pointer-events-auto space-y-2 px-2 md:px-0"
                 >
                     {/* Search */}
                     <SearchBar isDark={isDark} />
 
                     {/* Route type + options */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 md:gap-2">
                         {/* Road/Gravel toggle */}
-                        <div className={`${brutalBox} flex p-1 gap-1 flex-1`}>
+                        <div className={`${brutalBox} flex p-1 gap-1 flex-1 rounded-xl md:rounded-lg`}>
                             <button
                                 onClick={() => setRouteType('road')}
-                                className={`flex-1 py-1.5 text-xs font-bold transition-transform active:translate-y-[2px] ${routeType === 'road' ? (isDark ? 'bg-slate-200 text-slate-900 border-2 border-slate-800' : 'bg-slate-800 text-white border-2 border-transparent') : isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-800 hover:bg-slate-200'}`}
+                                className={`flex-1 py-1.5 md:py-2 text-[10px] md:text-xs font-black uppercase tracking-tight transition-transform active:translate-y-[2px] rounded-lg md:rounded-md ${routeType === 'road' ? (isDark ? 'bg-slate-200 text-slate-900 border-2 border-slate-800' : 'bg-slate-800 text-white border-2 border-transparent') : isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-800 hover:bg-slate-200'}`}
                             >🚴 Route</button>
                             <button
                                 onClick={() => setRouteType('gravel')}
-                                className={`flex-1 py-1.5 text-xs font-bold transition-transform active:translate-y-[2px] ${routeType === 'gravel' ? 'bg-amber-400 text-slate-900 border-2 border-slate-800' : isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-800 hover:bg-slate-200'}`}
+                                className={`flex-1 py-1.5 md:py-2 text-[10px] md:text-xs font-black uppercase tracking-tight transition-transform active:translate-y-[2px] rounded-lg md:rounded-md ${routeType === 'gravel' ? 'bg-amber-400 text-slate-900 border-2 border-slate-800' : isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-800 hover:bg-slate-200'}`}
                             >🚵 Gravel</button>
                         </div>
 
                         {/* Undo & Reset */}
                         {waypoints.length > 0 && (
-                            <div className="flex gap-2 h-full">
-                                <button onClick={undoWaypoint} className={`${brutalBox} p-3 active:translate-x-1 active:translate-y-1 active:shadow-none transition-transform`} title="Annuler le dernier point">
-                                    <Undo2 className="w-5 h-5" />
+                            <div className="flex gap-1.5 md:gap-2 h-full">
+                                <button onClick={undoWaypoint} className={`${brutalBox} p-2.5 md:p-3 active:translate-x-1 active:translate-y-1 active:shadow-none transition-transform rounded-xl md:rounded-lg`} title="Annuler le dernier point">
+                                    <Undo2 className="w-4 h-4 md:w-5 md:h-5" />
                                 </button>
-                                <button onClick={clearRoute} className={`${brutalBox} p-3 active:translate-x-1 active:translate-y-1 active:shadow-none transition-transform text-red-500`} title="Tout effacer">
-                                    <RotateCcw className="w-5 h-5" />
+                                <button onClick={clearRoute} className={`${brutalBox} p-2.5 md:p-3 active:translate-x-1 active:translate-y-1 active:shadow-none transition-transform text-red-500 rounded-xl md:rounded-lg`} title="Tout effacer">
+                                    <RotateCcw className="w-4 h-4 md:w-5 md:h-5" />
                                 </button>
                             </div>
                         )}
@@ -154,7 +154,7 @@ const OverlayUI: React.FC = () => {
 
                     {/* GPX error */}
                     {gpxError && (
-                        <div className="bg-red-500 text-white border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] px-3 py-2 text-xs font-bold flex items-center gap-2 mt-2">
+                        <div className="bg-red-500 text-white border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] px-3 py-2 text-xs font-bold flex items-center gap-2 mt-2 rounded-lg">
                             <AlertTriangle className="w-4 h-4 flex-shrink-0" />
                             {gpxError}
                         </div>
@@ -164,74 +164,84 @@ const OverlayUI: React.FC = () => {
                 {/* ── BOTTOM RIGHT: controls ── */}
                 <motion.div
                     initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.2 }}
-                    className={`flex flex-col gap-3 pointer-events-auto self-end transition-all duration-300 ${isBottomSheetOpen ? 'mb-[50vh] md:mb-0' : 'mb-0'}`}
+                    className={`flex flex-col gap-2 md:gap-3 pointer-events-auto self-end transition-all duration-300 ${isBottomSheetOpen ? 'mb-[45vh] md:mb-0' : 'mb-0 pb-16 md:pb-0'}`}
                 >
-                    {/* Map Management Group */}
-                    <div className={`${brutalBox} flex flex-col p-1`}>
-                        {/* Library */}
-                        <button onClick={() => setShowLibrary(true)} className={btn} title="Mes parcours">
-                            <FolderOpen className="w-6 h-6" />
-                        </button>
-                        <div className={`h-1 mx-2 ${isDark ? 'bg-slate-700' : 'bg-slate-800'}`} />
-                        {/* Layers */}
-                        <button
-                            onClick={() => setShowLayerSelector(true)}
-                            className={`${btn} ${showLayers ? (isDark ? 'text-amber-400' : 'text-amber-500') : ''}`}
-                            title="Fonds de carte et Couches"
-                        >
-                            <Layers className="w-6 h-6" />
-                        </button>
+                    {/* Zoom Tools - Hidden on Small Mobile to save space */}
+                    <div className={`${brutalBox} hidden md:flex flex-col p-1 rounded-xl`}>
+                        <button onClick={zoomIn} className={btn} title="Zoom avant"><Plus className="w-5 h-5 md:w-6 md:h-6" /></button>
+                        <div className={`h-0.5 mx-2 ${isDark ? 'bg-slate-700' : 'bg-slate-800'}`} />
+                        <button onClick={zoomOut} className={btn} title="Zoom arrière"><Minus className="w-5 h-5 md:w-6 md:h-6" /></button>
                     </div>
 
-                    {/* Zoom Tools */}
-                    <div className={`${brutalBox} flex flex-col p-1`}>
-                        <button onClick={zoomIn} className={btn} title="Zoom avant"><Plus className="w-6 h-6" /></button>
-                        <div className={`h-1 mx-2 ${isDark ? 'bg-slate-700' : 'bg-slate-800'}`} />
-                        <button onClick={zoomOut} className={btn} title="Zoom arrière"><Minus className="w-6 h-6" /></button>
-                    </div>
-
-                    {/* Quick Access Actions (Shortcuts when starting) */}
-                    {!routeSummary && (
-                        <div className={`${brutalBox} flex flex-col p-1`}>
-                            <button onClick={() => setShowLoop(true)} className={btn} title="Générer une boucle">
-                                <RefreshCw className="w-6 h-6 text-brand-primary" />
+                    <div className="flex flex-row md:flex-col gap-2 items-end justify-end">
+                        {/* Map Management Group */}
+                        <div className={`${brutalBox} flex flex-row md:flex-col p-1 rounded-xl md:rounded-2xl`}>
+                            {/* Library */}
+                            <button onClick={() => setShowLibrary(true)} className={btn} title="Mes parcours">
+                                <FolderOpen className="w-5 h-5 md:w-6 md:h-6" />
                             </button>
-                            <div className={`h-1 mx-2 ${isDark ? 'bg-slate-700' : 'bg-slate-800'}`} />
-                            <button onClick={() => fileInputRef.current?.click()} className={btn} title="Importer un GPX">
-                                <Upload className="w-6 h-6 text-emerald-500" />
+                            <div className={`hidden md:block h-0.5 mx-2 ${isDark ? 'bg-slate-700' : 'bg-slate-800'}`} />
+                            <div className={`md:hidden w-0.5 my-2 ${isDark ? 'bg-slate-700' : 'bg-slate-800'}`} />
+                            {/* Layers */}
+                            <button
+                                onClick={() => setShowLayerSelector(true)}
+                                className={`${btn} ${showLayers ? (isDark ? 'text-amber-400' : 'text-amber-500') : ''}`}
+                                title="Fonds de carte et Couches"
+                            >
+                                <Layers className="w-5 h-5 md:w-6 md:h-6" />
                             </button>
                         </div>
-                    )}
 
-                    {/* AI Assistant */}
-                    <button onClick={() => setShowAiAssistant(true)} className={`${brutalBox} ${btn} p-4 bg-indigo-50 hover:bg-indigo-100 dark:bg-slate-800 dark:hover:bg-indigo-950 border-indigo-500`} title="Assistant IA">
-                        <Sparkles className="w-6 h-6 text-indigo-500" />
-                    </button>
+                        {/* Quick Access Actions */}
+                        {!routeSummary && (
+                            <div className={`${brutalBox} flex flex-row md:flex-col p-1 rounded-xl md:rounded-2xl`}>
+                                <button onClick={() => setShowLoop(true)} className={btn} title="Générer une boucle">
+                                    <RefreshCw className="w-5 h-5 md:w-6 md:h-6 text-brand-primary" />
+                                </button>
+                                <div className={`hidden md:block h-0.5 mx-2 ${isDark ? 'bg-slate-700' : 'bg-slate-800'}`} />
+                                <div className={`md:hidden w-0.5 my-2 ${isDark ? 'bg-slate-700' : 'bg-slate-800'}`} />
+                                <button onClick={() => fileInputRef.current?.click()} className={btn} title="Importer un GPX">
+                                    <Upload className="w-5 h-5 md:w-6 md:h-6 text-emerald-500" />
+                                </button>
+                            </div>
+                        )}
 
-                    {/* Geoloc */}
-                    <button onClick={handleLocate} className={`${brutalBox} ${btn} p-4 ${isLocating ? 'animate-pulse' : ''}`} title="Ma position">
-                        <Navigation className={`w-6 h-6 ${isLocating ? 'text-blue-500' : ''}`} />
-                    </button>
+                        {/* System Controls Group */}
+                        <div className={`${brutalBox} flex flex-row md:flex-col p-1 rounded-xl md:rounded-2xl`}>
+                            {/* AI Assistant */}
+                            <button onClick={() => setShowAiAssistant(true)} className={btn} title="Assistant IA">
+                                <Sparkles className="w-5 h-5 md:w-6 md:h-6 text-indigo-500 font-black" />
+                            </button>
+                            <div className={`hidden md:block h-0.5 mx-2 ${isDark ? 'bg-slate-700' : 'bg-slate-800'}`} />
+                            <div className={`md:hidden w-0.5 my-2 ${isDark ? 'bg-slate-700' : 'bg-slate-800'}`} />
+                            {/* Theme */}
+                            <button onClick={() => setTheme(isDark ? 'light' : 'dark')} className={btn} title="Thème">
+                                {isDark ? <Sun className="w-5 h-5 md:w-6 md:h-6 text-amber-400" /> : <Moon className="w-5 h-5 md:w-6 md:h-6 text-slate-800" />}
+                            </button>
+                        </div>
 
-                    {/* Theme */}
-                    <button onClick={() => setTheme(isDark ? 'light' : 'dark')} className={`${brutalBox} ${btn} p-4`} title="Thème">
-                        {isDark ? <Sun className="w-6 h-6 text-amber-400" /> : <Moon className="w-6 h-6 text-slate-800" />}
-                    </button>
+                        <div className="flex flex-col gap-2">
+                            {/* Geoloc */}
+                            <button onClick={handleLocate} className={`${brutalBox} ${btn} rounded-xl md:rounded-2xl p-4 md:p-5 ${isLocating ? 'animate-pulse bg-blue-50/50' : ''}`} title="Ma position">
+                                <Navigation className={`w-6 h-6 md:w-7 md:h-7 ${isLocating ? 'text-blue-500' : ''}`} />
+                            </button>
 
-                    {/* Open/Close sheet Toggle (The Marker Button) */}
-                    {routeSummary && (
-                        <motion.button
-                            initial={{ scale: 0 }} animate={{ scale: 1 }}
-                            onClick={() => setIsBottomSheetOpen(!isBottomSheetOpen)}
-                            className="bg-brand-primary text-white border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] p-4 flex items-center justify-center font-bold uppercase hover:brightness-110 active:translate-y-1 active:shadow-none transition-all relative"
-                            title={isBottomSheetOpen ? "Masquer les statistiques" : "Afficher les statistiques"}
-                        >
-                            <MapPin className="w-6 h-6" />
-                            {!isBottomSheetOpen && (
-                                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-slate-800 animate-pulse" />
+                            {/* Open/Close sheet Toggle */}
+                            {routeSummary && (
+                                <motion.button
+                                    initial={{ scale: 0 }} animate={{ scale: 1 }}
+                                    onClick={() => setIsBottomSheetOpen(!isBottomSheetOpen)}
+                                    className="bg-brand-primary text-white border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] p-4 md:p-5 flex items-center justify-center font-bold uppercase hover:brightness-110 active:translate-y-1 active:shadow-none transition-all relative rounded-xl md:rounded-2xl"
+                                    title={isBottomSheetOpen ? "Masquer les statistiques" : "Afficher les statistiques"}
+                                >
+                                    <MapPin className="w-6 h-6 md:w-7 md:h-7" />
+                                    {!isBottomSheetOpen && (
+                                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-neo-red rounded-full border-2 border-slate-800 animate-pulse" />
+                                    )}
+                                </motion.button>
                             )}
-                        </motion.button>
-                    )}
+                        </div>
+                    </div>
                 </motion.div>
             </div>
 
