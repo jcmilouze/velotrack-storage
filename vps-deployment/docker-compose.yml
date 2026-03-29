@@ -1,0 +1,18 @@
+services:
+  brouter-engine:
+    image: ghcr.io/woltapp/brouter:latest
+    container_name: brouter-engine
+    restart: always
+    expose:
+      - 17777
+    volumes:
+      - ../brouter-infra/data:/brouter/segments
+      - ../brouter-infra/profiles:/brouter/custom_profiles
+    environment:
+      - JAVA_OPTS=-Xmx2G -Xms1G
+    networks:
+      - velotrack-net
+
+networks:
+  velotrack-net:
+    driver: bridge
