@@ -7,7 +7,6 @@ import {
 import { useRouteStore } from '../../store/useRouteStore';
 import { useMapContext } from '../../context/MapContext';
 import { useGeolocation } from '../../hooks/useGeolocation';
-import { calculateRoute } from '../../services/routingService';
 import { parseGpxFile } from '../../services/gpxImport';
 import { decodeRouteFromUrl } from '../../services/urlSharing';
 import SearchBar from './SearchBar';
@@ -46,28 +45,18 @@ const OverlayUI: React.FC = () => {
 
     const btn = `p-3 transition-transform duration-75 active:translate-x-1 active:translate-y-1 active:shadow-none ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'} font-bold`;
 
-    // Restore route from shared URL on mount
     useEffect(() => {
         const state = decodeRouteFromUrl();
         if (!state) return;
         setRouteName(state.routeName);
         setRouteType(state.routeType);
-        const positions = state.waypoints.map((w) => w.position);
+        // Important: addWaypoint triggers the MapView effect
         state.waypoints.forEach((w) => addWaypoint(w.position, w.name));
-        if (positions.length >= 2) {
-            calculateRoute(positions, state.routeType);
-        }
+        
         window.history.replaceState({}, '', window.location.pathname);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [addWaypoint, setRouteName, setRouteType]);
 
-    // Auto-recalculate when routeType changes
-    useEffect(() => {
-        if (waypoints.length >= 2) {
-            calculateRoute(waypoints.map((w) => w.position), routeType);
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [routeType]);
+    // Note: Auto-recalculate now handled by MapView reactive effect
 
     const handleLocate = useCallback(() => {
         locate();

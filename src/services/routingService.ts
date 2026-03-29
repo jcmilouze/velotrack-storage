@@ -7,6 +7,12 @@ import { fetchElevationProfile } from './elevationService';
 const VALHALLA_URL = import.meta.env.VITE_VALHALLA_URL;
 const OSRM_FALLBACK_URL = import.meta.env.VITE_OSRM_URL;
 
+// --- CONFIGURATION MOTEURS DE CALCUL ---
+// Webhook n8n servant de passerelle vers le container BRouter sur le VPS
+const VPS_BROUTER_URL = import.meta.env.VITE_N8N_ROUTING_URL || 'https://n8n.bessacvps.fr/webhook/velotrack/routing';
+// Fallback local optionnel
+const LOCAL_BROUTER_URL = 'http://localhost:17777/brouter';
+
 // ─── Formatters ───────────────────────────────────────────────────────────
 
 export const formatDistance = (km: number): string => {
@@ -177,32 +183,112 @@ const parseOSRMResponse = (data: any) => {
     };
 };
 
+// ─── BRouter ──────────────────────────────────────────────────────────────
+
+const getBRouterProfile = (routeType: RouteType) => {
+    // Profil custom "gravel-master" (priorité graviers/chemins) ou "fastbike" (route)
+    return routeType === 'gravel' ? 'gravel-master' : 'fastbike';
+};
+
+const fetchFromBRouter = async (waypoints: Position[], routeType: RouteType) => {
+    const profile = getBRouterProfile(routeType);
+    const lonlats = waypoints.map((p) => `${p[0]},${p[1]}`).join('|');
+    const query = `?lonlats=${lonlats}&profile=${profile}&format=geojson`;
+
+    // 1. Essai sur le VPS (n8n + BRouter Docker)
+    try {
+        console.debug(`[VeloTrack] Tentative Routage VPS...`, { profile });
+        const response = await fetch(`${VPS_BROUTER_URL}${query}`);
+        if (response.ok) return response.json();
+        throw new Error(`VPS Status: ${response.status}`);
+    } catch (vpsErr) {
+        console.warn(`[VeloTrack] VPS BRouter indisponible, repli LOCAL...`, vpsErr);
+        
+        // 2. Repli sur le BRouter Local (localhost)
+        try {
+            const localResponse = await fetch(`${LOCAL_BROUTER_URL}${query}`);
+            if (localResponse.ok) return localResponse.json();
+            throw new Error(`Local Status: ${localResponse.status}`);
+        } catch (localErr) {
+            console.error(`[VeloTrack] Échec de tous les moteurs BRouter.`, { vps: vpsErr, local: localErr });
+            throw new Error('Moteur BRouter (VPS & Local) hors-ligne.');
+        }
+    }
+};
+
+const parseBRouterResponse = (data: any) => {
+    if (!data?.features?.length) throw new Error('No route in BRouter response');
+
+    const feature = data.features[0];
+    
+    // BRouter can return LineString or MultiLineString
+    let coords: number[][] = [];
+    if (feature.geometry.type === 'MultiLineString') {
+        // Flatten array of arrays of coordinates
+        coords = feature.geometry.coordinates.flat();
+    } else {
+        coords = feature.geometry.coordinates; // [lng, lat][]
+    }
+    
+    const trackProps = feature.properties || {};
+
+    const distanceKm = (parseInt(trackProps['track-length']) || 0) / 1000;
+    const timeSecs = parseInt(trackProps['total-time']) || 0;
+    const cost = parseInt(trackProps['cost']) || 0;
+
+    const summary: RouteSummary = { length: distanceKm, time: timeSecs, cost };
+
+    return {
+        routeGeometry: feature,
+        summary,
+        maneuvers: [], // BRouter GeoJSON doesn't provide rich text maneuvers natively via /brouter
+        coordinates: coords,
+    };
+};
+
+// ─── Public API ───────────────────────────────────────────────────────────
+
 // ─── Public API ───────────────────────────────────────────────────────────
 
 export const getRouteData = async (
     waypoints: Position[],
-    routeType: RouteType = 'road',
-    avoidHighways: boolean = false,
+    routeType: RouteType,
+    avoidHighways: boolean,
     elevation?: 'flat' | 'hilly' | 'mountain'
 ) => {
     let lastError: any = null;
 
-    // Tentative Valhalla
+    // 1. Priorité BRouter (Gravel Master !)
+    // Utilisé en priorité pour le mode 'gravel' via VPS ou Local
+    if (routeType === 'gravel') {
+        try {
+            console.log(`[VeloTrack] BRouter: Routage GRAVEL local...`);
+            const data = await fetchFromBRouter(waypoints, routeType);
+            return parseBRouterResponse(data);
+        } catch (err) {
+            lastError = err;
+            console.warn('[VeloTrack] BRouter failed, trying Valhalla fallback...', err);
+        }
+    }
+
+    // 2. Fallback Valhalla (ou priorité Road)
     try {
+        console.log(`[VeloTrack] Valhalla: Routage ${routeType.toUpperCase()}...`);
         const data = await fetchFromValhalla(waypoints, routeType, avoidHighways, elevation);
         return parseValhallaResponse(data);
     } catch (err) {
         lastError = err;
-        console.warn('Valhalla failed or blocked, trying OSRM...', err);
+        console.warn(`[VeloTrack] Valhalla failed or blocked, trying OSRM...`, err);
     }
 
-    // Fallback OSRM
+    // 3. Fallback OSRM (Dernier recours, routage basique)
     try {
+        console.log(`[VeloTrack] OSRM: Routage de secours...`);
         const data = await fetchFromOSRM(waypoints);
         return parseOSRMResponse(data);
     } catch (err) {
-        console.error('All routing engines failed', { valhalla: lastError, osrm: err });
-        throw new Error('Impossible de calculer l\'itinéraire (Serveurs saturés)');
+        console.error('[VeloTrack] All routing engines failed', { valhalla: lastError, osrm: err });
+        throw new Error('Impossible de calculer l\'itinéraire (Serveurs saturés ou hors-ligne)');
     }
 };
 
@@ -213,38 +299,51 @@ export const commitRouteData = async (result: any) => {
     store.setRouteSummary(result.summary);
     store.setManeuvers(result.maneuvers);
     store.setRouteCoordinates(result.coordinates);
-    store.setIsBottomSheetOpen(true);
+    
+    // Auto-open sheet if we have a summary and it's not already open
+    if (result.summary && !store.isBottomSheetOpen) {
+        store.setIsBottomSheetOpen(true);
+    }
 
-    // Snap markers to the road if Valhalla/OSRM returns distinct snapped locations
+    // Optional: Snap markers to the road if the engine provides refined locations
     if (result.snappedLocations) {
         store.snapWaypoints(result.snappedLocations);
     }
 
-    const profile = await fetchElevationProfile(result.coordinates);
-    if (profile) store.setElevationProfile(profile);
+    // Fetch elevation asynchronously
+    try {
+        const profile = await fetchElevationProfile(result.coordinates);
+        if (profile) store.setElevationProfile(profile);
+    } catch (e) {
+        console.warn('[VeloTrack] Elevation sync failed:', e);
+    }
 };
 
+/**
+ * Main entry point for route calculation.
+ * Derives parameters from store if not provided.
+ */
 export const calculateRoute = async (
     waypoints: Position[],
-    routeType: RouteType = 'road',
-    avoidHighways?: boolean,
-    elevation?: 'flat' | 'hilly' | 'mountain'
+    overrides?: {
+        routeType?: RouteType;
+        avoidHighways?: boolean;
+        elevation?: 'flat' | 'hilly' | 'mountain';
+    }
 ): Promise<void> => {
     if (waypoints.length < 2) return;
 
     const store = useRouteStore.getState();
-    const avoid = avoidHighways ?? store.avoidHighways;
+    const type = overrides?.routeType ?? store.routeType;
+    const avoid = overrides?.avoidHighways ?? store.avoidHighways;
+    const elevation = overrides?.elevation; // Optional
 
     store.setIsLoading(true);
     store.setError(null);
-    store.setElevationProfile(null);
 
     try {
-        const result = await getRouteData(waypoints, routeType, avoid, elevation);
+        const result = await getRouteData(waypoints, type, avoid, elevation);
         await commitRouteData(result);
-        store.cleanupWaypoints();
-
-
     } catch (error) {
         store.setError(error instanceof Error ? error.message : 'Erreur de calcul d\'itinéraire');
     } finally {

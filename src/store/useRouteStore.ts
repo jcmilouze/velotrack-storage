@@ -186,6 +186,12 @@ export const useRouteStore = create<RouteState>((set, get) => ({
         const index = wps.findIndex(w => w.id === id);
         if (index === -1) return state;
 
+        const [lng, lat] = pos;
+        if (isNaN(lng) || isNaN(lat) || (Math.abs(lng) < 0.0001 && Math.abs(lat) < 0.0001)) {
+            console.warn(`[VeloTrack] Refusing invalid coordinate update:`, id, pos);
+            return state;
+        }
+
         wps[index] = { ...wps[index], position: pos };
 
         if (getIsClosed(wps)) {

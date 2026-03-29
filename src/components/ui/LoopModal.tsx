@@ -4,7 +4,6 @@ import { X, RefreshCw } from 'lucide-react';
 import { useRouteStore } from '../../store/useRouteStore';
 import { useMapContext } from '../../context/MapContext';
 import { buildLoopWaypoints, type CompassDirection } from '../../services/loopGenerator';
-import { calculateRoute } from '../../services/routingService';
 
 interface Props {
     onClose: () => void;
@@ -25,7 +24,7 @@ const DIRECTION_LABELS: Record<CompassDirection, string> = {
 const LoopModal: React.FC<Props> = ({ onClose, isDark }) => {
     const [distance, setDistance] = useState(50);
     const [directions, setDirections] = useState<CompassDirection[]>(['N']);
-    const { waypoints, routeType, clearRoute } = useRouteStore();
+    const { waypoints, clearRoute } = useRouteStore();
     const { mapRef } = useMapContext();
 
     const brutalModal = isDark
@@ -72,10 +71,8 @@ const LoopModal: React.FC<Props> = ({ onClose, isDark }) => {
         // Add return to departure
         store.addWaypoint(loopWaypoints[loopWaypoints.length - 1], 'Retour départ');
 
-        // Calculate the loop
-        await calculateRoute(loopWaypoints, routeType);
         onClose();
-    }, [departure, distance, directions, routeType, clearRoute, onClose]);
+    }, [departure, distance, directions, clearRoute, onClose]);
 
     const toggleDirection = (dir: CompassDirection) => {
         setDirections(prev => {

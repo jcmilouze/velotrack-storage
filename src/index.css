@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
 @theme {
     --color-brand-primary: #FC4C02;
@@ -12,8 +13,7 @@
     --shadow-brutal-hover: 2px 2px 0px 0px rgba(0, 0, 0, 1);
 }
 
-/* ── Google Fonts ── */
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
+/* ── Google Fonts (Applied below in :root) ── */
 
 :root {
     font-family: 'Space Grotesk', system-ui, Avenir, Helvetica, Arial, sans-serif;
@@ -53,6 +53,10 @@ body {
 .route-point-marker {
     z-index: 1000 !important;
     pointer-events: auto !important;
+    position: absolute !important;
+    top: 0;
+    left: 0;
+    will-change: transform;
 }
 
 .segment-marker {

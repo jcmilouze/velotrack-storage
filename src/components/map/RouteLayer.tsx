@@ -56,11 +56,13 @@ const RouteLayer: React.FC<Props> = ({ map }) => {
         }
 
         const handleStyleData = () => {
-            addLayers();
-            const routeSource = map.getSource('route-source') as maplibregl.GeoJSONSource | undefined;
-            if (routeSource) {
-                const currentGeom = useRouteStore.getState().routeGeometry;
-                routeSource.setData(currentGeom ?? { type: 'FeatureCollection', features: [] });
+            if (!map.getSource('route-source')) {
+                addLayers();
+                const routeSource = map.getSource('route-source') as maplibregl.GeoJSONSource | undefined;
+                if (routeSource) {
+                    const currentGeom = useRouteStore.getState().routeGeometry;
+                    routeSource.setData(currentGeom ?? { type: 'FeatureCollection', features: [] });
+                }
             }
         };
 

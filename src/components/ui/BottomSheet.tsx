@@ -2,15 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     ChevronDown, MapPin, Clock, RotateCcw, ArrowUpCircle, ArrowDownCircle,
-    Download, CheckCircle2, Edit3, BookmarkPlus, Share2, Copy, Flame,
+    Download, CheckCircle2, Edit3, Flame,
     CornerDownRight, Navigation, RefreshCw, Layers, Upload, Activity, Loader2
 } from 'lucide-react';
 import { useRouteStore } from '../../store/useRouteStore';
 import { formatDistance, formatDuration } from '../../services/routingService';
 import { downloadGpx, generateGpx } from '../../services/gpxExport';
-import { routeLibrary } from '../../services/routeLibrary';
-import { copyUrlToClipboard } from '../../services/urlSharing';
-import { fetchWeather, getWeatherDescription, getWindDirection } from '../../services/weatherService';
+import { fetchWeather, getWeatherDescription } from '../../services/weatherService';
 import { useMapContext } from '../../context/MapContext';
 import { uploadToStrava } from '../../services/stravaService';
 import { useStravaAuth } from '../../hooks/useStravaAuth';
@@ -22,14 +20,12 @@ const BottomSheet: React.FC = () => {
         theme, elevationProfile, routeCoordinates,
         routeType, routeName, setRouteName,
         waypoints, closeLoop, setShowLoop,
-        routeSummary, maneuvers, clearRoute,
+        routeSummary, clearRoute,
     } = useRouteStore();
 
     const { fitBounds } = useMapContext();
 
     const [isExported, setIsExported] = useState(false);
-    const [isSaved, setIsSaved] = useState(false);
-    const [isCopied, setIsCopied] = useState(false);
     const [isStravaUploading, setIsStravaUploading] = useState(false);
     const [isStravaSuccess, setIsStravaSuccess] = useState(false);
     const [isEditingName, setIsEditingName] = useState(false);
@@ -42,7 +38,6 @@ const BottomSheet: React.FC = () => {
         ? 'bg-slate-900 border-[3px] border-b-0 border-slate-700 text-slate-100 shadow-[0px_-8px_0px_rgba(0,0,0,0.3)] rounded-t-[1.5rem]'
         : 'bg-[#fdfbf7] border-[3px] border-b-0 border-slate-800 text-slate-900 shadow-[0px_-8px_0px_#1e293b] rounded-t-[1.5rem]';
     const subtle = isDark ? 'text-slate-400' : 'text-slate-600';
-    const divider = isDark ? 'bg-slate-700' : 'bg-slate-800';
     const cardBg = isDark
         ? 'bg-slate-800 border-2 border-slate-700 shadow-[4px_4px_0px_rgba(0,0,0,0.5)]'
         : 'bg-white border-2 border-slate-800 shadow-[4px_4px_0px_#1e293b]';
@@ -78,25 +73,6 @@ const BottomSheet: React.FC = () => {
         ? Math.round((elevationProfile.ascent / (routeSummary.time / 3600)))
         : null;
 
-    // F3 — Save route
-    const handleSave = () => {
-        routeLibrary.save({
-            name: routeName,
-            routeType,
-            waypoints: waypoints.map((w) => ({
-                position: w.position as [number, number],
-                label: w.label,
-                name: w.name,
-            })),
-            routeGeometry: useRouteStore.getState().routeGeometry,
-            summary: routeSummary,
-            maneuvers,
-            elevationProfile,
-            coordinates: routeCoordinates,
-        });
-        setIsSaved(true);
-        setTimeout(() => setIsSaved(false), 3000);
-    };
 
     // F4 — Export GPX
     const handleExportGpx = () => {
@@ -118,12 +94,6 @@ const BottomSheet: React.FC = () => {
         setTimeout(() => setIsExported(false), 3000);
     };
 
-    // F5 — Share URL
-    const handleShare = async () => {
-        await copyUrlToClipboard({ waypoints: waypoints.map((w) => ({ position: w.position as [number, number], label: w.label, name: w.name })), routeType, routeName });
-        setIsCopied(true);
-        setTimeout(() => setIsCopied(false), 3000);
-    };
 
     // FX — Strava Export
     const handleStravaUpload = async () => {
@@ -305,18 +275,32 @@ const BottomSheet: React.FC = () => {
                             </div>
                         )}
 
-                        {/* Close loop button */}
-                        {canCloseLoop && (
-                            <motion.button
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                onClick={closeLoop}
-                                className={`w-full mb-4 flex items-center justify-center gap-2 py-4 border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] text-sm uppercase font-black transition-all active:translate-y-1 active:shadow-none bg-brand-primary text-white hover:brightness-110 rounded-xl`}
-                            >
-                                <CornerDownRight className="w-5 h-5" />
-                                Fermer la boucle
-                            </motion.button>
-                        )}
+                        {/* Action buttons row (Cleanup & Close Loop) */}
+                        <div className="flex flex-col gap-2 mb-4">
+                            {waypoints.length >= 3 && (
+                                <motion.button
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={() => useRouteStore.getState().cleanupWaypoints()}
+                                    className={`w-full flex items-center justify-center gap-2 py-3 border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] text-xs uppercase font-black transition-all active:translate-y-1 active:shadow-none bg-white text-slate-900 hover:bg-slate-100 rounded-xl`}
+                                    title="Supprimer les points redondants et les demi-tours"
+                                >
+                                    <Activity className="w-4 h-4" />
+                                    Optimiser les points
+                                </motion.button>
+                            )}
+                            
+                            {canCloseLoop && (
+                                <motion.button
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    onClick={closeLoop}
+                                    className={`w-full flex items-center justify-center gap-2 py-4 border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] text-sm uppercase font-black transition-all active:translate-y-1 active:shadow-none bg-brand-primary text-white hover:brightness-110 rounded-xl`}
+                                >
+                                    <CornerDownRight className="w-5 h-5" />
+                                    Fermer la boucle
+                                </motion.button>
+                            )}
+                        </div>
 
                         {/* Elevation Chart Section */}
                         {elevationProfile && (

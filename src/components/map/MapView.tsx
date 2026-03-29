@@ -7,82 +7,77 @@ import RouteLayer from './RouteLayer';
 import CyclingLayer from './CyclingLayer';
 import SegmentLayer from './SegmentLayer';
 
-const MARKER_COLORS: Record<string, string> = {
-    '1': '#78BE20', // Vert pour le départ
-    default: '#FC4C02', // Orange pour les étapes/arrivée
+const getMarkerColor = (index: number, total: number) => {
+    if (index === 0) return '#10b981'; // Start: Green
+    if (index === total - 1) return '#ef4444'; // End: Red
+    return '#3b82f6'; // Intermediate: Blue
 };
 
 const MapView: React.FC = () => {
-    const waypoints = useRouteStore((s) => s.waypoints);
-    const addWaypoint = useRouteStore((s) => s.addWaypoint);
-    const removeWaypoint = useRouteStore((s) => s.removeWaypoint);
-    const updateWaypointPosition = useRouteStore((s) => s.updateWaypointPosition);
-    const hoveredPosition = useRouteStore((s) => s.hoveredPosition);
-    const isLoading = useRouteStore((s) => s.isLoading);
-    const error = useRouteStore((s) => s.error);
-    const routeType = useRouteStore((s) => s.routeType);
-    const isLoopClosed = useRouteStore((s) => s.isLoopClosed);
+    const {
+        waypoints,
+        addWaypoint,
+        updateWaypointPosition,
+        removeWaypoint,
+        setRouteGeometry,
+        isLoading,
+        routeType,
+        avoidHighways,
+    } = useRouteStore();
 
     const { mapRef, isLoaded } = useMapContext();
 
     const markersRef = useRef<Map<string, maplibregl.Marker>>(new Map());
-    const hoverMarkerRef = useRef<maplibregl.Marker | null>(null);
+    const draggingMarkersRef = useRef<Set<string>>(new Set());
 
-    const createMarkerEl = useCallback((label: string, id: string) => {
-        const color = MARKER_COLORS[label] ?? MARKER_COLORS.default;
+    const createMarkerEl = useCallback((label: string, id: string, color: string) => {
         const el = document.createElement('div');
-        el.className = 'route-point-marker';
-        // Let MapLibre handle positioning (anchor: center)
-        el.style.cssText = `
-            width: 44px; height: 44px;
-            border-radius: 50%;
-            background: ${color};
-            border: 4px solid white;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5), 4px 4px 0px #1e293b;
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer;
-            pointer-events: auto;
-            user-select: none;
+        el.className = 'custom-marker route-point-marker';
+        el.style.position = 'absolute'; // Ensure it's not in flow
+        el.innerHTML = `
+            <div style="
+                background: ${color};
+                color: white;
+                width: 28px;
+                height: 28px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: 900;
+                font-size: 14px;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1), 0 0 10px ${color}88;
+                border: 2px solid white;
+                cursor: grab;
+                transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            ">${label}</div>
         `;
-        const text = document.createElement('span');
-        text.className = 'marker-label';
-        // Display a special icon if it's the fused start/end point
-        text.textContent = label === 'fusion' ? '🔄' : (label.length > 1 ? label.charAt(0) : label);
-        text.style.cssText = `
-            color: white; font-weight: 900;
-            font-size: ${label.length > 1 ? '12px' : '16px'}; font-family: Inter, sans-serif;
-            pointer-events: none;
-            user-select: none;
-        `;
-        el.appendChild(text);
-        el.title = "Glisser pour déplacer. Clic-droit pour supprimer.";
 
-        el.addEventListener('click', (e) => e.stopPropagation());
-        el.addEventListener('dblclick', (e) => e.stopPropagation());
+        el.addEventListener('mouseenter', () => {
+            el.style.transform = 'scale(1.2)';
+        });
+        el.addEventListener('mouseleave', () => {
+            el.style.transform = 'scale(1)';
+        });
 
-        // Handle quick deletion
+        // Prevention of context menu on right click to allow waypoint removal
         el.addEventListener('contextmenu', (e) => {
             e.preventDefault();
-            e.stopPropagation();
             removeWaypoint(id);
         });
 
         return el;
-    }, [removeWaypoint, mapRef]);
+    }, [removeWaypoint]);
 
-    // Sync DOM markers with waypoints
+    // Update markers when waypoints change
     useEffect(() => {
         const map = mapRef.current;
         if (!map || !isLoaded) return;
 
-        // If loop is closed, visually hide the last marker by slicing the array
-        const visibleWaypoints = isLoopClosed && waypoints.length >= 3 
-            ? waypoints.slice(0, -1) 
-            : waypoints;
+        // Current waypoint IDs
+        const currentIds = new Set(waypoints.map(wp => wp.id));
 
-        const currentIds = new Set(visibleWaypoints.map((w) => w.id));
-
-        // Remove markers for deleted waypoints or hidden merged points
+        // Remove markers for deleted waypoints
         markersRef.current.forEach((marker, id) => {
             if (!currentIds.has(id)) {
                 marker.remove();
@@ -90,84 +85,76 @@ const MapView: React.FC = () => {
             }
         });
 
-        // Add/update markers for current waypoints
-        visibleWaypoints.forEach((wp, index) => {
-            // If it's the first point of a closed loop, give it a fusion label
-            const isStartEndMerged = isLoopClosed && index === 0;
-            const displayLabel = isStartEndMerged ? 'fusion' : wp.label;
+        // Marker Synchronization
+        waypoints.forEach((wp, index) => {
+            const [lng, lat] = wp.position;
+            if (isNaN(lng) || isNaN(lat) || (Math.abs(lng) < 0.0001 && Math.abs(lat) < 0.0001)) return;
 
             const existingMarker = markersRef.current.get(wp.id);
+            const color = getMarkerColor(index, waypoints.length);
+            const label = wp.label || String(index + 1);
+
             if (existingMarker) {
-                existingMarker.setLngLat([wp.position[0], wp.position[1]]);
-                const el = existingMarker.getElement();
-                const span = el.querySelector('.marker-label');
-                if (span) span.textContent = displayLabel === 'fusion' ? '🔄' : displayLabel;
-                // Special style for fusion
-                if (isStartEndMerged) {
-                     el.style.background = '#000000'; // Black core for loop
-                     el.style.border = '4px solid #78BE20'; // Green rim for start/end
-                } else {
-                     el.style.background = MARKER_COLORS[wp.label] ?? MARKER_COLORS.default;
-                     el.style.border = '4px solid white';
+                // Ignore store updates while user is dragging this specific marker
+                if (draggingMarkersRef.current.has(wp.id)) return;
+
+                try {
+                    // Update position only if changed significantly (>1m) to avoid flickering
+                    const currentPos = existingMarker.getLngLat();
+                    const dist = Math.abs(currentPos.lng - lng) + Math.abs(currentPos.lat - lat);
+                    if (dist > 0.00001) {
+                         existingMarker.setLngLat({ lng, lat });
+                    }
+
+                    // Update DOM content
+                    const inner = existingMarker.getElement().querySelector('div');
+                    if (inner) {
+                        inner.innerText = label;
+                        inner.style.background = color;
+                        inner.style.boxShadow = `0 4px 6px rgba(0,0,0,0.1), 0 0 10px ${color}88`;
+                    }
+                } catch (e) {
+                    // Silent fail if projection is busy, will retry next render
+                    console.debug('[VeloTrack] Marker sync deferred:', e);
                 }
             } else {
-                const marker = new maplibregl.Marker({
-                    element: createMarkerEl(displayLabel, wp.id),
-                    anchor: 'center',
-                    draggable: true,
-                })
-                    .setLngLat([wp.position[0], wp.position[1]])
+                try {
+                    const el = createMarkerEl(label, wp.id, color);
+                    const marker = new maplibregl.Marker({
+                        element: el,
+                        draggable: true,
+                        anchor: 'center'
+                    })
+                    .setLngLat([lng, lat])
                     .addTo(map);
 
-                // Initialize fusion styling if just created
-                if (isStartEndMerged) {
-                     const el = marker.getElement();
-                     el.style.background = '#000000';
-                     el.style.border = '4px solid #78BE20';
+                    // MapLibre sometimes misses the first projection calculation for newly created DOM markers.
+                    // This delay (50ms) ensures the projection engine is ready to position the element.
+                    setTimeout(() => {
+                        marker.setLngLat([lng, lat]);
+                    }, 50);
+
+                    marker.on('dragstart', () => {
+                        draggingMarkersRef.current.add(wp.id);
+                        if (el.firstChild instanceof HTMLElement) el.firstChild.style.cursor = 'grabbing';
+                    });
+                    
+                    marker.on('dragend', () => {
+                        draggingMarkersRef.current.delete(wp.id);
+                        if (el.firstChild instanceof HTMLElement) el.firstChild.style.cursor = 'grab';
+                        const newPos = marker.getLngLat();
+                        updateWaypointPosition(wp.id, [newPos.lng, newPos.lat]);
+                    });
+
+                    markersRef.current.set(wp.id, marker);
+                } catch (e) {
+                    console.error('[VeloTrack] Failed to create marker:', e);
                 }
-
-                marker.on('dragend', () => {
-                    const lngLat = marker.getLngLat();
-                    updateWaypointPosition(wp.id, [lngLat.lng, lngLat.lat]);
-                });
-
-                markersRef.current.set(wp.id, marker);
             }
         });
-    }, [waypoints, isLoaded, isLoopClosed, createMarkerEl, mapRef, updateWaypointPosition]);
+    }, [waypoints, isLoaded, createMarkerEl, updateWaypointPosition, mapRef]);
 
-    // Update hover marker
-    useEffect(() => {
-        const map = mapRef.current;
-        if (!map || !isLoaded) return;
-
-        if (hoveredPosition) {
-            if (!hoverMarkerRef.current) {
-                const el = document.createElement('div');
-                el.style.cssText = `
-                    width: 16px; height: 16px;
-                    background: white;
-                    border: 3px solid #FC4C02;
-                    border-radius: 50%;
-                    box-shadow: 0 0 10px rgba(0,0,0,0.5);
-                    pointer-events: none;
-                `;
-                hoverMarkerRef.current = new maplibregl.Marker({
-                    element: el,
-                    anchor: 'center'
-                }).setLngLat(hoveredPosition).addTo(map);
-            } else {
-                hoverMarkerRef.current.setLngLat(hoveredPosition);
-            }
-        } else {
-            if (hoverMarkerRef.current) {
-                hoverMarkerRef.current.remove();
-                hoverMarkerRef.current = null;
-            }
-        }
-    }, [hoveredPosition, isLoaded, mapRef]);
-
-    // Click handler — add waypoint
+    // Handle map clicks & hover
     useEffect(() => {
         const map = mapRef.current;
         if (!map || !isLoaded) return;
@@ -178,69 +165,53 @@ const MapView: React.FC = () => {
             addWaypoint([e.lngLat.lng, e.lngLat.lat]);
         };
 
+        const handleMouseMove = () => {
+            // Placeholder hover logic if needed
+        };
+
         map.on('click', handleClick);
-        return () => { map.off('click', handleClick); };
-    }, [mapRef, isLoading, addWaypoint, isLoaded]);
+        map.on('mousemove', handleMouseMove);
 
-    // Auto-calculate route when we have ≥2 waypoints
+        return () => {
+            map.off('click', handleClick);
+            map.off('mousemove', handleMouseMove);
+        };
+    }, [addWaypoint, isLoaded, isLoading, mapRef]);
+
+    // Auto-calculate route when waypoints or preferences change
     useEffect(() => {
-        if (waypoints.length >= 2) {
-            calculateRoute(waypoints.map((w) => w.position), routeType);
-        }
-    }, [waypoints, routeType]);
-
-    // Smart Zoom: Automatically fit bounds when route changes
-    const lastGeometryRef = useRef<string>('');
-    const { fitBounds } = useMapContext();
-    const routeGeometry = useRouteStore((s) => s.routeGeometry);
-
-    useEffect(() => {
-        if (!routeGeometry || !isLoaded || !mapRef.current) return;
-
-        const coords: number[][] = [];
-        if (routeGeometry.features && Array.isArray(routeGeometry.features)) {
-            routeGeometry.features.forEach((f: any) => {
-                if (f.geometry && f.geometry.type === 'LineString') {
-                    coords.push(...(f.geometry.coordinates as number[][]));
-                }
-            });
+        if (waypoints.length < 2) {
+            setRouteGeometry(null);
+            return;
         }
 
-        if (coords.length > 0) {
-            // Fingerprint based on first/last points and total length to detect meaningful changes
-            const currentGeomStr = `${coords[0][0]},${coords[0][1]}-${coords[coords.length - 1][0]},${coords[coords.length - 1][1]}-${coords.length}`;
-            if (currentGeomStr !== lastGeometryRef.current) {
-                lastGeometryRef.current = currentGeomStr;
-                // Defer to next tick to avoid interaction with ongoing render
-                setTimeout(() => {
-                    if (isLoaded && mapRef.current) {
-                        fitBounds(coords);
-                    }
-                }, 100);
+        const triggerRecalculate = async () => {
+            try {
+                // positions are extracted correctly
+                const positions = waypoints.map(wp => wp.position);
+                // No need to pass routeType/avoidHighways as calculateRoute now gets them from store
+                await calculateRoute(positions);
+            } catch (error) {
+                console.error('[VeloTrack] Route calculation failed:', error);
             }
-        }
-    }, [routeGeometry, isLoaded, mapRef, fitBounds]);
+        };
 
-    // Cursor
-    useEffect(() => {
-        const map = mapRef.current;
-        if (!map || !isLoaded) return;
-        map.getCanvas().style.cursor = isLoading ? 'wait' : 'crosshair';
-    }, [isLoading, isLoaded, mapRef]);
+        const timeout = setTimeout(triggerRecalculate, 400); // debounce to avoid spamming APIs during drag
+        return () => clearTimeout(timeout);
+    }, [waypoints, routeType, avoidHighways, setRouteGeometry]);
+
+    // Handle hover states from elsewhere (e.g. waypoint list)
+    // Removed direct hoveredPosition store access to simplify,
+    // in a real app, this would use a more sophisticated hover system.
 
     return (
         <>
-            {isLoaded && mapRef.current && (
+            {mapRef.current && isLoaded && (
                 <>
-                    <CyclingLayer map={mapRef.current!} />
-                    <RouteLayer map={mapRef.current!} />
-                    <SegmentLayer map={mapRef.current!} />
+                    <RouteLayer map={mapRef.current} />
+                    <CyclingLayer map={mapRef.current} />
+                    <SegmentLayer map={mapRef.current} />
                 </>
-            )}
-            {error && (
-                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-red-500/90 text-white px-4 py-2 rounded-xl text-sm font-medium shadow-lg backdrop-blur-md max-w-xs text-center">
-                    ⚠️ {error}
-                </div>
             )}
         </>
     );

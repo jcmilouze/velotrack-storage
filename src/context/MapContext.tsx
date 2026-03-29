@@ -71,6 +71,7 @@ const getStyle = (theme: 'light' | 'dark', mapStyle: 'auto' | 'light' | 'dark' |
 export const MapProvider: React.FC<MapProviderProps> = ({ children, theme, mapStyle = 'auto' }) => {
     const mapRef = useRef<maplibregl.Map | null>(null);
     const [isLoaded, setIsLoaded] = useState(false);
+    const lastStyleRef = useRef<string | maplibregl.StyleSpecification>(getStyle(theme, mapStyle));
 
     useEffect(() => {
         // Ensure DOM element is modern/mounted
@@ -110,7 +111,12 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children, theme, mapSt
     useEffect(() => {
         const map = mapRef.current;
         if (!map || !isLoaded) return;
-        map.setStyle(getStyle(theme, mapStyle));
+        
+        const newStyle = getStyle(theme, mapStyle);
+        if (newStyle !== lastStyleRef.current) {
+            map.setStyle(newStyle);
+            lastStyleRef.current = newStyle;
+        }
     }, [theme, mapStyle, isLoaded]);
 
     const zoomIn = useCallback(() => mapRef.current?.zoomIn({ duration: 250 }), []);
