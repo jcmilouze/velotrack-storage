@@ -25,6 +25,10 @@ const getElevationForIndex = (
     profile: ElevationProfile | null
 ): string => {
     if (!profile?.samples?.length) return '';
+    if (totalPoints <= 1) {
+        const ele = profile.samples[0];
+        return `\n        <ele>${ele.toFixed(1)}</ele>`;
+    }
     const sampleIndex = Math.round((index / (totalPoints - 1)) * (profile.samples.length - 1));
     const ele = profile.samples[Math.min(sampleIndex, profile.samples.length - 1)];
     return `\n        <ele>${ele.toFixed(1)}</ele>`;
