@@ -200,7 +200,7 @@ export const useRouteStore = create<RouteState>((set, get) => ({
         if (index === -1) return state;
 
         const [lng, lat] = pos;
-        if (isNaN(lng) || isNaN(lat) || (Math.abs(lng) < 0.0001 && Math.abs(lat) < 0.0001)) {
+        if (isNaN(lng) || isNaN(lat) || (Math.abs(lng) < 0.0001 && Math.abs(lat) < 0.0001)) { // garde coordonnées nulles/invalides
             console.warn(`[VeloTrack] Refusing invalid coordinate update:`, id, pos);
             return state;
         }
@@ -280,9 +280,9 @@ export const useRouteStore = create<RouteState>((set, get) => ({
         const end = waypoints[waypoints.length - 1];
 
         // If distance is very small, assume already closed
-        const dx = start.position[0] - end.position[0];
-        const dy = start.position[1] - end.position[1];
-        if (Math.abs(dx) < 0.0001 && Math.abs(dy) < 0.0001) return state;
+        const lastPos = end.position as [number, number];
+        const firstPos = start.position as [number, number];
+        if (haversineDistance(firstPos, lastPos) < 5) return state; // déjà fermé
 
         const label = LABELS[waypoints.length] ?? (waypoints.length + 1).toString();
         const wp: Waypoint = { 
