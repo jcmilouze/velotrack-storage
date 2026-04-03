@@ -20,13 +20,25 @@ export const stravaAuth = {
 
     /** Exchange authorization code for access token */
     exchangeToken: async (code: string) => {
-        // NOTE: In a real app, this MUST be done through a backend to keep the client_secret safe.
-        // If the user provides a VITE_STRAVA_CLIENT_SECRET, we'll use it for demo purposes.
-        const clientSecret = import.meta.env.VITE_STRAVA_CLIENT_SECRET;
-
-        if (!clientSecret) {
-            throw new Error("Strava Client Secret manquant pour l'échange de token.");
+        // ⚠️ SÉCURITÉ : Ce flux doit être migré vers un backend proxy.
+        // VITE_STRAVA_CLIENT_SECRET ne doit JAMAIS être exposé en production.
+        // Solution cible : endpoint /api/strava/token côté serveur (n8n, edge function, etc.)
+        if (import.meta.env.PROD) {
+            throw new Error(
+                "L'échange de token Strava n'est pas disponible en production. " +
+                "Un backend proxy est requis pour sécuriser le client_secret."
+            );
         }
+
+        const clientSecret = import.meta.env.VITE_STRAVA_CLIENT_SECRET;
+        if (!clientSecret) {
+            throw new Error("Strava Client Secret manquant dans .env (dev uniquement).");
+        }
+
+        console.warn(
+            '[VeloTrack] ⚠️ VITE_STRAVA_CLIENT_SECRET utilisé en développement. ' +
+            'Ne JAMAIS déployer avec cette configuration.'
+        );
 
         const response = await fetch('https://www.strava.com/oauth/token', {
             method: 'POST',
@@ -42,7 +54,6 @@ export const stravaAuth = {
         if (!response.ok) throw new Error('Échec de l\'échange de token Strava');
         const data = await response.json();
 
-        // Save to localStorage
         localStorage.setItem('strava_token', JSON.stringify({
             accessToken: data.access_token,
             refreshToken: data.refresh_token,
