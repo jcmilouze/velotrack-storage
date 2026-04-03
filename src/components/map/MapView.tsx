@@ -101,7 +101,9 @@ const MapView: React.FC = () => {
                 try {
                     // Update position only if changed significantly (>1m) to avoid flickering
                     const currentPos = existingMarker.getLngLat();
-                    const dist = Math.abs(currentPos.lng - lng) + Math.abs(currentPos.lat - lat);
+                    const dLng = currentPos.lng - lng;
+                    const dLat = currentPos.lat - lat;
+                    const dist = Math.sqrt(dLng * dLng + dLat * dLat);
                     if (dist > 0.00001) {
                          existingMarker.setLngLat({ lng, lat });
                     }
@@ -165,16 +167,10 @@ const MapView: React.FC = () => {
             addWaypoint([e.lngLat.lng, e.lngLat.lat]);
         };
 
-        const handleMouseMove = () => {
-            // Placeholder hover logic if needed
-        };
-
         map.on('click', handleClick);
-        map.on('mousemove', handleMouseMove);
 
         return () => {
             map.off('click', handleClick);
-            map.off('mousemove', handleMouseMove);
         };
     }, [addWaypoint, isLoaded, isLoading, mapRef]);
 
