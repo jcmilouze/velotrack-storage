@@ -81,6 +81,19 @@ interface RouteState {
     setPointB: (pos: Position | null) => void;
 }
 
+/** Retourne la distance en mètres entre deux positions [lng, lat] */
+const haversineDistance = (pos1: [number, number], pos2: [number, number]): number => {
+    const R = 6371000;
+    const toRad = (d: number) => (d * Math.PI) / 180;
+    const dLat = toRad(pos2[1] - pos1[1]);
+    const dLng = toRad(pos2[0] - pos1[0]);
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(toRad(pos1[1])) * Math.cos(toRad(pos2[1])) *
+        Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
 const generateId = () => {
     try {
         return crypto.randomUUID();
@@ -96,7 +109,7 @@ const getIsClosed = (wps: Waypoint[]) => {
     if (wps.length < 3) return false;
     const start = wps[0].position;
     const end = wps[wps.length - 1].position;
-    return Math.abs(start[0] - end[0]) < 0.0001 && Math.abs(start[1] - end[1]) < 0.0001;
+    return haversineDistance(start as [number, number], end as [number, number]) < 15;
 };
 
 const reLabelWaypoints = (wps: Waypoint[]) => wps.map((wp, i) => ({
@@ -212,10 +225,8 @@ export const useRouteStore = create<RouteState>((set, get) => ({
         snappedLocations.forEach((snappedPos, i) => {
             const wp = wps[i];
             if (!wp) return;
-            const dx = Math.abs(wp.position[0] - snappedPos[0]);
-            const dy = Math.abs(wp.position[1] - snappedPos[1]);
-            // Tolerance de ~1.1m pour éviter les micro-sauts invisibles
-            if (dx > 0.00001 || dy > 0.00001) {
+            // Tolerance de ~10m pour éviter les micro-sauts invisibles
+            if (haversineDistance(wp.position as [number, number], snappedPos) > 10) {
                 wps[i] = { ...wp, position: snappedPos };
                 changed = true;
             }
@@ -312,14 +323,12 @@ export const useRouteStore = create<RouteState>((set, get) => ({
             // On cherche la distance minimale de ce point par rapport au tracé RÉEL
             let minDist = Infinity;
             for (const coord of routeCoordinates) {
-                const dx = pos[0] - coord[0];
-                const dy = pos[1] - coord[1];
-                const d = Math.sqrt(dx * dx + dy * dy);
+                const d = haversineDistance(pos as [number, number], coord as [number, number]);
                 if (d < minDist) minDist = d;
             }
 
-            // Seuil de ~200m pour détecter un point "orphelin" qui dévie trop du tracé fluide
-            if (minDist < 0.002) {
+            // Seuil de 20m pour détecter un point "orphelin" qui dévie trop du tracé fluide
+            if (minDist < 20) {
                 cleanedWps.push(wp);
             } else {
                 console.log(`[VeloTrack] Cleanup: Removing redundant Waypoint ${wp.label} (U-turn detected)`);
