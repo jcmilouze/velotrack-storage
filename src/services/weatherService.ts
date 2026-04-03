@@ -41,7 +41,7 @@ export const getWeatherDescription = (code: number) =>
 /** Cardinal wind direction from degrees */
 export const getWindDirection = (deg: number): string => {
     const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
-    return dirs[Math.round(deg / 45) % 8];
+    return dirs[((Math.round(deg / 45) % 8) + 8) % 8];
 };
 
 export const fetchWeather = async (
