@@ -152,13 +152,10 @@ const BottomSheet: React.FC = () => {
                     transition={{ type: 'spring', damping: 28, stiffness: 280 }}
                     className={`
                         absolute bottom-0 left-0 right-0 z-20 pointer-events-auto
-                        md:bottom-5 md:left-auto md:right-20 md:w-96
+                        md:bottom-5 md:left-auto md:right-20 md:w-96 md:h-auto md:max-h-[85vh]
+                        ${!mobileExpanded ? 'h-[90px]' : 'max-h-[85vh]'}
                         ${brutalSheet} flex flex-col font-bold
                     `}
-                    style={{
-                        maxHeight: mobileExpanded ? '85vh' : undefined,
-                        height: !mobileExpanded ? '90px' : undefined,
-                    }}
                 >
                     {/* ── PEEK BAND (mobile only) ── */}
                     {!mobileExpanded && (
