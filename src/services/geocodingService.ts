@@ -12,16 +12,16 @@ export interface GeocodingResult {
     importance: number;
 }
 
-let lastRequestTime = 0;
-const MIN_INTERVAL_MS = 300;
+const MIN_INTERVAL_MS = 1100; // légèrement > 1s pour sécurité Nominatim
 
-const throttle = async (): Promise<void> => {
-    const now = Date.now();
-    const elapsed = now - lastRequestTime;
-    if (elapsed < MIN_INTERVAL_MS) {
-        await new Promise((r) => setTimeout(r, MIN_INTERVAL_MS - elapsed));
-    }
-    lastRequestTime = Date.now();
+// Chaîne de Promises pour sérialiser les appels — élimine la race condition
+let throttleChain: Promise<void> = Promise.resolve();
+
+const throttle = (): Promise<void> => {
+    throttleChain = throttleChain.then(
+        () => new Promise((resolve) => setTimeout(resolve, MIN_INTERVAL_MS))
+    );
+    return throttleChain;
 };
 
 export const searchAddress = async (
