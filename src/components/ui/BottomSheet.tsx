@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     ChevronDown, MapPin, Clock, RotateCcw, ArrowUpCircle, ArrowDownCircle,
     Download, CheckCircle2, Edit3, Flame,
-    CornerDownRight, Navigation, RefreshCw, Layers, Upload, Activity, Loader2
+    CornerDownRight, Navigation, RefreshCw, Layers, Upload, Activity, Loader2,
+    ArrowLeftRight, ArrowUp
 } from 'lucide-react';
 import { useRouteStore } from '../../store/useRouteStore';
 import { formatDistance, formatDuration } from '../../services/routingService';
@@ -21,6 +22,7 @@ const BottomSheet: React.FC = () => {
         routeType, routeName, setRouteName,
         waypoints, closeLoop, setShowLoop,
         routeSummary, clearRoute,
+        reverseWaypoints,
     } = useRouteStore();
 
     const { fitBounds } = useMapContext();
@@ -30,6 +32,7 @@ const BottomSheet: React.FC = () => {
     const [isStravaSuccess, setIsStravaSuccess] = useState(false);
     const [isEditingName, setIsEditingName] = useState(false);
     const [weather, setWeather] = useState<Awaited<ReturnType<typeof fetchWeather>>>(null);
+    const [mobileExpanded, setMobileExpanded] = useState(false);
 
     const { isConnected: isStravaConnected, login: stravaLogin, isLoading: isStravaLoading } = useStravaAuth();
 
@@ -43,12 +46,17 @@ const BottomSheet: React.FC = () => {
         : 'bg-white border-2 border-slate-800 shadow-[4px_4px_0px_#1e293b]';
     const btnHover = isDark ? 'hover:bg-slate-700 active:translate-y-0.5' : 'hover:bg-slate-200 active:translate-y-0.5 border-2 border-transparent hover:border-slate-800';
 
-    // F7 — Fetch weather when route opens
+    // Fetch weather when route opens
     useEffect(() => {
         if (!isBottomSheetOpen || !waypoints[0]) return;
         const [lng, lat] = waypoints[0].position;
         fetchWeather(lat, lng).then(setWeather);
     }, [isBottomSheetOpen, waypoints]);
+
+    // Reset to peek each time the sheet opens
+    useEffect(() => {
+        if (isBottomSheetOpen) setMobileExpanded(false);
+    }, [isBottomSheetOpen]);
 
     // F6 — Calorie estimation
     const kcal = (() => {
@@ -131,9 +139,12 @@ const BottomSheet: React.FC = () => {
         return Math.abs(start[0] - end[0]) > 0.0001 || Math.abs(start[1] - end[1]) > 0.0001;
     })();
 
+    const isMobileVisible = waypoints.length > 0;
+    const isVisible = isBottomSheetOpen || isMobileVisible;
+
     return (
         <AnimatePresence>
-            {isBottomSheetOpen && (
+            {isVisible && (
                 <motion.div
                     initial={{ y: '100%', opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
@@ -144,14 +155,72 @@ const BottomSheet: React.FC = () => {
                         md:bottom-5 md:left-auto md:right-20 md:w-96
                         ${brutalSheet} flex flex-col font-bold
                     `}
-                    style={{ maxHeight: '85vh' }}
+                    style={{
+                        maxHeight: mobileExpanded ? '85vh' : undefined,
+                        height: !mobileExpanded ? '90px' : undefined,
+                    }}
                 >
-                    {/* Mobile handle & Header (Non-scrolling) */}
-                    <div className="flex-shrink-0 px-5 pt-3">
-                        <div className="flex justify-center mb-3 md:hidden">
-                            <div className={`w-12 h-1.5 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`} />
+                    {/* ── PEEK BAND (mobile only) ── */}
+                    {!mobileExpanded && (
+                        <div
+                            className="flex-shrink-0 px-4 h-[90px] flex flex-col justify-center gap-2 cursor-pointer md:hidden"
+                            onClick={() => setMobileExpanded(true)}
+                        >
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    {routeSummary ? (
+                                        <>
+                                            <span className="font-black text-sm">{formatDistance(routeSummary.length)}</span>
+                                            <span className={`text-sm font-bold ${subtle}`}>·</span>
+                                            <span className="font-black text-sm">{formatDuration(routeSummary.time)}</span>
+                                            {elevationProfile && (
+                                                <>
+                                                    <span className={`text-sm font-bold ${subtle}`}>·</span>
+                                                    <span className="font-black text-sm text-emerald-500">↑{elevationProfile.ascent}m</span>
+                                                </>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <span className={`font-black text-sm ${subtle}`}>{waypoints.length} point{waypoints.length > 1 ? 's' : ''}</span>
+                                    )}
+                                </div>
+                                <ArrowUp className="w-5 h-5 opacity-50" />
+                            </div>
+                            <div className="flex gap-2">
+                                {waypoints.length >= 2 && (
+                                    <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); reverseWaypoints(); }}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] uppercase font-black rounded-lg ${cardBg}`}
+                                    >
+                                        <ArrowLeftRight className="w-3.5 h-3.5" />
+                                        Inverser
+                                    </button>
+                                )}
+                                {canCloseLoop && (
+                                    <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); closeLoop(); }}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] uppercase font-black rounded-lg bg-brand-primary text-white border-2 border-slate-800"
+                                    >
+                                        <CornerDownRight className="w-3.5 h-3.5" />
+                                        Fermer boucle
+                                    </button>
+                                )}
+                            </div>
                         </div>
+                    )}
 
+                    {/* ── HEADER (desktop always, mobile only when expanded) ── */}
+                    <div className={`flex-shrink-0 px-5 pt-3 ${!mobileExpanded ? 'hidden md:block' : ''}`}>
+                        <div className="flex justify-center mb-3 md:hidden">
+                            <button
+                                type="button"
+                                onClick={() => setMobileExpanded(false)}
+                                aria-label="Réduire le panneau"
+                                className={`w-12 h-1.5 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-200'}`}
+                            />
+                        </div>
                         <div className="flex items-center gap-2 mb-4">
                             {isEditingName ? (
                                 <input autoFocus value={routeName}
@@ -168,13 +237,13 @@ const BottomSheet: React.FC = () => {
                             )}
                             <div className="flex gap-1">
                                 <button onClick={clearRoute} className={`p-2 ${btnHover} rounded-full`} title="Réinitialiser"><RotateCcw className="w-5 h-5 text-red-500" /></button>
-                                <button onClick={() => setIsBottomSheetOpen(false)} className={`p-2 ${btnHover} rounded-full`} title="Fermer"><ChevronDown className="w-5 h-5" /></button>
+                                <button onClick={() => { setMobileExpanded(false); setIsBottomSheetOpen(false); }} className={`p-2 ${btnHover} rounded-full`} title="Fermer"><ChevronDown className="w-5 h-5" /></button>
                             </div>
                         </div>
                     </div>
 
                     {/* Scrollable Content */}
-                    <div className="flex-1 overflow-y-auto px-5 pb-8 custom-scrollbar">
+                    <div className={`flex-1 overflow-y-auto px-5 pb-8 custom-scrollbar ${mobileExpanded ? 'block' : 'hidden md:block'}`}>
                         {/* Quick Action Bar */}
                         <div className="grid grid-cols-3 gap-2 mb-4">
                             <button onClick={() => setShowLoop(true)} className={`py-3 ${cardBg} flex flex-col items-center justify-center gap-1 text-[10px] md:text-[11px] uppercase font-black hover:bg-brand-primary hover:text-white transition-all rounded-xl`}>
@@ -277,6 +346,17 @@ const BottomSheet: React.FC = () => {
 
                         {/* Action buttons row (Cleanup & Close Loop) */}
                         <div className="flex flex-col gap-2 mb-4">
+                            {waypoints.length >= 2 && (
+                                <motion.button
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={reverseWaypoints}
+                                    className={`w-full flex items-center justify-center gap-2 py-3 border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] text-xs uppercase font-black transition-all active:translate-y-1 active:shadow-none bg-white text-slate-900 hover:bg-slate-100 rounded-xl`}
+                                    title="Inverser le sens du parcours"
+                                >
+                                    <ArrowLeftRight className="w-4 h-4" />
+                                    Inverser le tracé
+                                </motion.button>
+                            )}
                             {waypoints.length >= 3 && (
                                 <motion.button
                                     whileTap={{ scale: 0.98 }}
