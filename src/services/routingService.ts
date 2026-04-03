@@ -243,10 +243,9 @@ const parseBRouterResponse = (data: any) => {
         summary,
         maneuvers: [], // BRouter GeoJSON doesn't provide rich text maneuvers natively via /brouter
         coordinates: coords,
+        snappedLocations: undefined,
     };
 };
-
-// ─── Public API ───────────────────────────────────────────────────────────
 
 // ─── Public API ───────────────────────────────────────────────────────────
 
