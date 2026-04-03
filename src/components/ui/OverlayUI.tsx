@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Plus, Minus, Navigation, Sun, Moon, RotateCcw, Undo2, MapPin,
-    RefreshCw, FolderOpen, Layers, AlertTriangle, Upload, Sparkles
+    RefreshCw, FolderOpen, Layers, AlertTriangle, Upload, Sparkles, ArrowLeftRight
 } from 'lucide-react';
 import { useRouteStore } from '../../store/useRouteStore';
 import { useMapContext } from '../../context/MapContext';
@@ -25,7 +25,8 @@ const OverlayUI: React.FC = () => {
         setElevationProfile, setRouteCoordinates,
         setIsBottomSheetOpen, addWaypoint, undoWaypoint,
         showLayers, isBottomSheetOpen,
-        showLoop, setShowLoop
+        showLoop, setShowLoop,
+        reverseWaypoints
     } = useRouteStore();
 
     const { zoomIn, zoomOut, flyTo, fitBounds } = useMapContext();
@@ -134,6 +135,11 @@ const OverlayUI: React.FC = () => {
                                 <button onClick={undoWaypoint} className={`${brutalBox} p-2.5 md:p-3 active:translate-x-1 active:translate-y-1 active:shadow-none transition-transform rounded-xl md:rounded-lg`} title="Annuler le dernier point">
                                     <Undo2 className="w-4 h-4 md:w-5 md:h-5" />
                                 </button>
+                                {waypoints.length >= 2 && (
+                                    <button onClick={reverseWaypoints} className={`${brutalBox} p-2.5 md:p-3 active:translate-x-1 active:translate-y-1 active:shadow-none transition-transform rounded-xl md:rounded-lg`} title="Inverser le tracé">
+                                        <ArrowLeftRight className="w-4 h-4 md:w-5 md:h-5" />
+                                    </button>
+                                )}
                                 <button onClick={clearRoute} className={`${brutalBox} p-2.5 md:p-3 active:translate-x-1 active:translate-y-1 active:shadow-none transition-transform text-red-500 rounded-xl md:rounded-lg`} title="Tout effacer">
                                     <RotateCcw className="w-4 h-4 md:w-5 md:h-5" />
                                 </button>
