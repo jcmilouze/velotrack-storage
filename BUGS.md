@@ -10,12 +10,12 @@
 | # | Fichier | Ligne | Description | Statut |
 |---|---------|-------|-------------|--------|
 | C1 | `stravaService.ts` | 25 | `VITE_STRAVA_CLIENT_SECRET` exposé en frontend — OAuth2 secret ne doit JAMAIS être côté client | ⚠️ PARTIAL — bloqué en prod, backend proxy requis |
-| C2 | `routingService.ts` | 244 | `parseBRouterResponse()` ne retourne pas `snappedLocations` → crash si BRouter utilisé | ⬜ OPEN |
-| C3 | `gpxExport.ts` | 28 | Division par zéro si `totalPoints === 1` (`index / (totalPoints - 1)`) | ⬜ OPEN |
-| C4 | `weatherService.ts` | 44 | Modulo wind direction : `Math.round(350/45) = 8`, `dirs[8] = undefined`. Fix : `((Math.round(deg/45) % 8) + 8) % 8` | ⬜ OPEN |
-| C5 | `geocodingService.ts` | 15 | Race condition throttling : `lastRequestTime` non-atomique, appels parallèles bypasse rate limit | ⬜ OPEN |
-| C6 | `MapView.tsx` | 104 | Distance flicker prevention utilise Manhattan distance au lieu d'Euclidienne — marqueurs mal positionnés | ⬜ OPEN |
-| C7 | `useRouteStore.ts` | 95 | `getIsClosed` compare degrés décimaux absolus (0.0001°) : tolérance latitude-dépendante (~11m équateur, ~5m à 60°N) | ⬜ OPEN |
+| C2 | `routingService.ts` | 244 | `parseBRouterResponse()` ne retourne pas `snappedLocations` → crash si BRouter utilisé | ✅ FIXED |
+| C3 | `gpxExport.ts` | 28 | Division par zéro si `totalPoints === 1` (`index / (totalPoints - 1)`) | ✅ FIXED |
+| C4 | `weatherService.ts` | 44 | Modulo wind direction : `Math.round(350/45) = 8`, `dirs[8] = undefined`. Fix : `((Math.round(deg/45) % 8) + 8) % 8` | ✅ FIXED |
+| C5 | `geocodingService.ts` | 15 | Race condition throttling : `lastRequestTime` non-atomique, appels parallèles bypasse rate limit | ✅ FIXED |
+| C6 | `MapView.tsx` | 104 | Distance flicker prevention utilise Manhattan distance au lieu d'Euclidienne — marqueurs mal positionnés | ✅ FIXED |
+| C7 | `useRouteStore.ts` | 95 | `getIsClosed` compare degrés décimaux absolus (0.0001°) : tolérance latitude-dépendante (~11m équateur, ~5m à 60°N) | ✅ FIXED |
 | C8 | `AiAssistant.tsx` | 100 | Double `JSON.parse` non sécurisée sur réponse API — XSS possible si serveur compromis | ⬜ OPEN |
 
 ---
