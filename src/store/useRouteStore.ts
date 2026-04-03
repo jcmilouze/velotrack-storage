@@ -72,6 +72,7 @@ interface RouteState {
     closeLoop: () => void;
     clearRoute: () => void;
     cleanupWaypoints: () => void;
+    reverseWaypoints: () => void;
 
     // Helpers
     get isLoopClosed(): boolean;
@@ -343,6 +344,12 @@ export const useRouteStore = create<RouteState>((set, get) => ({
 
         if (cleanedWps.length === waypoints.length) return state;
         return { waypoints: reLabelWaypoints(cleanedWps) };
+    }),
+
+    reverseWaypoints: () => set((state) => {
+        if (state.waypoints.length < 2) return state;
+        const reversed = reLabelWaypoints([...state.waypoints].reverse());
+        return { waypoints: reversed };
     }),
 }));
 
