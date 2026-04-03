@@ -92,8 +92,10 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children, theme, mapSt
         window.addEventListener('resize', handleResize);
 
         map.on('load', () => {
+            // MapLibre v5 — forcer mercator pour que map.project() fonctionne sur styles sans projection déclarée
+            map.setProjection({ type: 'mercator' });
+            map.resize();
             setIsLoaded(true);
-            setTimeout(() => map.resize(), 100); // multiple resize checks to be safe
         });
         mapRef.current = map;
 

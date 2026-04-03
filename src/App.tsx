@@ -5,7 +5,8 @@ import { MapProvider } from './context/MapContext';
 import { useRouteStore } from './store/useRouteStore';
 
 function App() {
-  const { theme, mapStyle } = useRouteStore();
+  const theme = useRouteStore(s => s.theme);
+  const mapStyle = useRouteStore(s => s.mapStyle);
 
   return (
     <MapProvider theme={theme} mapStyle={mapStyle}>

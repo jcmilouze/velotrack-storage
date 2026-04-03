@@ -299,11 +299,6 @@ export const commitRouteData = async (result: any) => {
     store.setManeuvers(result.maneuvers);
     store.setRouteCoordinates(result.coordinates);
     
-    // Auto-open sheet if we have a summary and it's not already open
-    if (result.summary && !store.isBottomSheetOpen) {
-        store.setIsBottomSheetOpen(true);
-    }
-
     // Optional: Snap markers to the road if the engine provides refined locations
     if (result.snappedLocations) {
         store.snapWaypoints(result.snappedLocations);

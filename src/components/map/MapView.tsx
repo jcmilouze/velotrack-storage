@@ -29,6 +29,8 @@ const MapView: React.FC = () => {
 
     const markersRef = useRef<Map<string, maplibregl.Marker>>(new Map());
     const draggingMarkersRef = useRef<Set<string>>(new Set());
+    // Track the last position we explicitly set on each marker (store-side)
+    const markerPositionsRef = useRef<Map<string, [number, number]>>(new Map());
 
     const createMarkerEl = useCallback((label: string, id: string, color: string) => {
         const el = document.createElement('div');
@@ -82,6 +84,7 @@ const MapView: React.FC = () => {
             if (!currentIds.has(id)) {
                 marker.remove();
                 markersRef.current.delete(id);
+                markerPositionsRef.current.delete(id);
             }
         });
 
@@ -95,17 +98,15 @@ const MapView: React.FC = () => {
             const label = wp.label || String(index + 1);
 
             if (existingMarker) {
-                // Ignore store updates while user is dragging this specific marker
                 if (draggingMarkersRef.current.has(wp.id)) return;
 
                 try {
-                    // Update position only if changed significantly (>1m) to avoid flickering
-                    const currentPos = existingMarker.getLngLat();
-                    const dLng = currentPos.lng - lng;
-                    const dLat = currentPos.lat - lat;
-                    const dist = Math.sqrt(dLng * dLng + dLat * dLat);
-                    if (dist > 0.00001) {
-                         existingMarker.setLngLat({ lng, lat });
+                    // Only move marker if store position actually changed vs what we last set
+                    const lastPos = markerPositionsRef.current.get(wp.id);
+                    const storeChanged = !lastPos || lastPos[0] !== lng || lastPos[1] !== lat;
+                    if (storeChanged) {
+                        existingMarker.setLngLat({ lng, lat });
+                        markerPositionsRef.current.set(wp.id, [lng, lat]);
                     }
 
                     // Update DOM content
@@ -116,7 +117,6 @@ const MapView: React.FC = () => {
                         inner.style.boxShadow = `0 4px 6px rgba(0,0,0,0.1), 0 0 10px ${color}88`;
                     }
                 } catch (e) {
-                    // Silent fail if projection is busy, will retry next render
                     console.debug('[VeloTrack] Marker sync deferred:', e);
                 }
             } else {
@@ -130,17 +130,14 @@ const MapView: React.FC = () => {
                     .setLngLat([lng, lat])
                     .addTo(map);
 
-                    // MapLibre sometimes misses the first projection calculation for newly created DOM markers.
-                    // This delay (50ms) ensures the projection engine is ready to position the element.
-                    setTimeout(() => {
-                        marker.setLngLat([lng, lat]);
-                    }, 50);
+                    // Record position so subsequent effect runs don't re-set it
+                    markerPositionsRef.current.set(wp.id, [lng, lat]);
 
                     marker.on('dragstart', () => {
                         draggingMarkersRef.current.add(wp.id);
                         if (el.firstChild instanceof HTMLElement) el.firstChild.style.cursor = 'grabbing';
                     });
-                    
+
                     marker.on('dragend', () => {
                         draggingMarkersRef.current.delete(wp.id);
                         if (el.firstChild instanceof HTMLElement) el.firstChild.style.cursor = 'grab';

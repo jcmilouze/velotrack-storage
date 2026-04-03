@@ -53,9 +53,6 @@ body {
 .route-point-marker {
     z-index: 1000 !important;
     pointer-events: auto !important;
-    position: absolute !important;
-    top: 0;
-    left: 0;
     will-change: transform;
 }
 
