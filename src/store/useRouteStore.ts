@@ -15,7 +15,7 @@ export interface RouteManeuver {
     type: number;
 }
 
-export type RouteType = 'road' | 'gravel' | 'vttae';
+export type RouteType = 'road' | 'gravel';
 export type Theme = 'light' | 'dark';
 export type MapStyle = 'auto' | 'light' | 'dark' | 'satellite' | 'outdoors';
 export type ClickMode = 'setA' | 'setB';
