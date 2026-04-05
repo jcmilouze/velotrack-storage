@@ -34,7 +34,7 @@ app.get('/brouter*', async (req, res) => {
     let subPath = req.path.replace(/^\/brouter/, '');
     if (!subPath) subPath = '/brouter'; // Par défaut BRouter attend souvent /brouter
     
-    const params = new URLSearchParams(req.query as any);
+    const params = new URLSearchParams(Object.entries(req.query).map(([k, v]) => [k, String(v)]));
     const targetUrl = `${BROUTER_URL}${subPath}?${params.toString()}`;
     
     console.log(`[Bridge] Proxy -> ${targetUrl}`);
