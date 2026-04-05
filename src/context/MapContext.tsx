@@ -7,6 +7,7 @@ const DARK_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.
 
 const SATELLITE_STYLE = {
     version: 8,
+    projection: { type: 'mercator' },
     sources: {
         'esri-satellite': {
             type: 'raster',
@@ -26,6 +27,7 @@ const SATELLITE_STYLE = {
 
 const OUTDOORS_STYLE = {
     version: 8,
+    projection: { type: 'mercator' },
     sources: {
         'opentopo': {
             type: 'raster',
@@ -92,8 +94,6 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children, theme, mapSt
         window.addEventListener('resize', handleResize);
 
         map.on('load', () => {
-            // MapLibre v5 — forcer mercator pour que map.project() fonctionne sur styles sans projection déclarée
-            map.setProjection({ type: 'mercator' });
             map.resize();
             setIsLoaded(true);
         });

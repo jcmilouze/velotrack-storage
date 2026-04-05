@@ -8,8 +8,8 @@ const VALHALLA_URL = import.meta.env.VITE_VALHALLA_URL;
 const OSRM_FALLBACK_URL = import.meta.env.VITE_OSRM_URL;
 
 // --- CONFIGURATION MOTEURS DE CALCUL ---
-// Webhook n8n servant de passerelle vers le container BRouter sur le VPS
-const VPS_BROUTER_URL = import.meta.env.VITE_N8N_ROUTING_URL || 'https://n8n.bessacvps.fr/webhook/velotrack/routing';
+// Pont VPS (Port 3001) servant de passerelle vers le container BRouter interne
+const VPS_BRIDGE_URL = import.meta.env.VITE_GARMIN_BRIDGE_URL || 'http://localhost:3001';
 // Fallback local optionnel
 const LOCAL_BROUTER_URL = 'http://localhost:17777/brouter';
 
@@ -195,16 +195,16 @@ const fetchFromBRouter = async (waypoints: Position[], routeType: RouteType) => 
     const lonlats = waypoints.map((p) => `${p[0]},${p[1]}`).join('|');
     const query = `?lonlats=${lonlats}&profile=${profile}&format=geojson`;
 
-    // 1. Essai sur le VPS (n8n + BRouter Docker)
+    // 1. Essai via le Pont VPS (Relais vers brouter-vps)
     try {
-        console.debug(`[VeloTrack] Tentative Routage VPS...`, { profile });
-        const response = await fetch(`${VPS_BROUTER_URL}${query}`);
+        console.debug(`[VeloTrack] Tentative Routage via Pont VPS...`, { profile });
+        const response = await fetch(`${VPS_BRIDGE_URL}/brouter${query}`);
         if (response.ok) return response.json();
-        throw new Error(`VPS Status: ${response.status}`);
+        throw new Error(`Bridge Proxy Status: ${response.status}`);
     } catch (vpsErr) {
-        console.warn(`[VeloTrack] VPS BRouter indisponible, repli LOCAL...`, vpsErr);
+        console.warn(`[VeloTrack] Pont VPS indisponible, repli LOCAL...`, vpsErr);
         
-        // 2. Repli sur le BRouter Local (localhost)
+        // 2. Repli sur le BRouter Local (localhost:17777)
         try {
             const localResponse = await fetch(`${LOCAL_BROUTER_URL}${query}`);
             if (localResponse.ok) return localResponse.json();

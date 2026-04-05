@@ -11,8 +11,7 @@ import { formatDistance, formatDuration } from '../../services/routingService';
 import { downloadGpx, generateGpx } from '../../services/gpxExport';
 import { fetchWeather, getWeatherDescription } from '../../services/weatherService';
 import { useMapContext } from '../../context/MapContext';
-import { uploadToStrava } from '../../services/stravaService';
-import { useStravaAuth } from '../../hooks/useStravaAuth';
+import { useGarminSync } from '../../hooks/useGarminSync';
 import ElevationChart from './ElevationChart';
 
 const BottomSheet: React.FC = () => {
@@ -28,13 +27,13 @@ const BottomSheet: React.FC = () => {
     const { fitBounds } = useMapContext();
 
     const [isExported, setIsExported] = useState(false);
-    const [isStravaUploading, setIsStravaUploading] = useState(false);
-    const [isStravaSuccess, setIsStravaSuccess] = useState(false);
+    const [isGarminUploading, setIsGarminUploading] = useState(false);
+    const [isGarminSuccess, setIsGarminSuccess] = useState(false);
     const [isEditingName, setIsEditingName] = useState(false);
     const [weather, setWeather] = useState<Awaited<ReturnType<typeof fetchWeather>>>(null);
     const [mobileExpanded, setMobileExpanded] = useState(false);
 
-    const { isConnected: isStravaConnected, login: stravaLogin, isLoading: isStravaLoading } = useStravaAuth();
+    const { isLoading: isGarminLoading } = useGarminSync();
 
     const isDark = theme === 'dark';
     const brutalSheet = isDark
@@ -103,16 +102,11 @@ const BottomSheet: React.FC = () => {
     };
 
 
-    // FX — Strava Export
-    const handleStravaUpload = async () => {
-        if (!isStravaConnected) {
-            stravaLogin();
-            return;
-        }
-
+    // FX — Garmin Export
+    const handleGarminUpload = async () => {
         if (!routeCoordinates.length) return;
 
-        setIsStravaUploading(true);
+        setIsGarminUploading(true);
         try {
             const gpxContent = generateGpx({
                 routeName: routeName || 'VeloTrack Route',
@@ -121,14 +115,26 @@ const BottomSheet: React.FC = () => {
                 elevationProfile,
                 routeType
             });
-            const blob = new Blob([gpxContent], { type: 'application/gpx+xml' });
-            await uploadToStrava(blob, routeName || 'Mon parcours VeloTrack');
-            setIsStravaSuccess(true);
-            setTimeout(() => setIsStravaSuccess(false), 3000);
+            
+            const bridgeUrl = import.meta.env.VITE_GARMIN_BRIDGE_URL || 'http://localhost:3001';
+            const response = await fetch(`${bridgeUrl}/upload`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    gpxContent, 
+                    fileName: `${routeName || 'Parcours'}.gpx` 
+                }),
+            });
+
+            const result = await response.json();
+            if (result.status === 'error') throw new Error(result.message);
+
+            setIsGarminSuccess(true);
+            setTimeout(() => setIsGarminSuccess(false), 3000);
         } catch (err: any) {
-            alert(`Erreur Strava: ${err.message}`);
+            alert(`Erreur Garmin: ${err.message}`);
         } finally {
-            setIsStravaUploading(false);
+            setIsGarminUploading(false);
         }
     };
 
@@ -333,10 +339,10 @@ const BottomSheet: React.FC = () => {
                                     {isExported ? <CheckCircle2 className="w-5 h-5" /> : <Download className="w-5 h-5" />}
                                     <span className="uppercase tracking-tight">Export GPX</span>
                                 </motion.button>
-                                <motion.button onClick={handleStravaUpload} disabled={isStravaLoading || isStravaUploading} whileTap={{ scale: 0.95 }}
-                                    className={`py-3 px-1 font-black text-xs flex items-center justify-center gap-2 transition-all border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] rounded-xl ${isStravaSuccess ? 'bg-emerald-400 text-slate-900' : 'bg-[#FC4C02] text-white hover:brightness-110 active:translate-y-1 active:shadow-none'}`}>
-                                    {isStravaUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : (isStravaSuccess ? <CheckCircle2 className="w-5 h-5" /> : <Activity className="w-5 h-5" />)}
-                                    <span className="uppercase tracking-tight">Strava</span>
+                                <motion.button onClick={handleGarminUpload} disabled={isGarminLoading || isGarminUploading} whileTap={{ scale: 0.95 }}
+                                    className={`py-3 px-1 font-black text-xs flex items-center justify-center gap-2 transition-all border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] rounded-xl ${isGarminSuccess ? 'bg-emerald-400 text-slate-900' : 'bg-blue-600 text-white hover:brightness-110 active:translate-y-1 active:shadow-none'}`}>
+                                    {isGarminUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : (isGarminSuccess ? <CheckCircle2 className="w-5 h-5" /> : <Activity className="w-5 h-5" />)}
+                                    <span className="uppercase tracking-tight">Garmin</span>
                                 </motion.button>
                             </div>
                         )}

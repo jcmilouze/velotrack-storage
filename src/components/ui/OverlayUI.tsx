@@ -44,7 +44,7 @@ const OverlayUI: React.FC = () => {
         ? 'bg-slate-800 border-[3px] border-slate-700 text-slate-100 shadow-[4px_4px_0px_rgba(0,0,0,0.5)]'
         : 'bg-[#fdfbf7] border-[3px] border-slate-800 text-slate-900 shadow-[4px_4px_0px_#1e293b]';
 
-    const btn = `p-3 transition-transform duration-75 active:translate-x-1 active:translate-y-1 active:shadow-none ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'} font-bold`;
+    const btn = `p-2 md:p-3 transition-transform duration-75 active:translate-x-1 active:translate-y-1 active:shadow-none ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-200'} font-bold`;
 
     useEffect(() => {
         const state = decodeRouteFromUrl();
@@ -159,18 +159,18 @@ const OverlayUI: React.FC = () => {
                 {/* ── BOTTOM RIGHT: controls ── */}
                 <motion.div
                     initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.2 }}
-                    className={`flex flex-col gap-2 md:gap-3 pointer-events-auto self-end transition-all duration-300 ${isBottomSheetOpen ? 'mb-[45vh] md:mb-0' : 'mb-0 pb-16 md:pb-0'}`}
+                    className={`flex flex-col gap-2 md:gap-3 pointer-events-auto self-end transition-all duration-300 ${isBottomSheetOpen ? 'mb-[45vh] md:mb-0' : 'mb-2 pb-16 md:pb-0'}`}
                 >
                     {/* Zoom Tools - Hidden on Small Mobile to save space */}
-                    <div className={`${brutalBox} hidden md:flex flex-col p-1 rounded-xl`}>
-                        <button onClick={zoomIn} className={btn} title="Zoom avant"><Plus className="w-5 h-5 md:w-6 md:h-6" /></button>
+                    <div className={`${brutalBox} hidden sm:flex flex-col p-1 rounded-xl`}>
+                        <button onClick={zoomIn} className={btn} title="Zoom avant"><Plus className="w-4 h-4 md:w-6 md:h-6" /></button>
                         <div className={`h-0.5 mx-2 ${isDark ? 'bg-slate-700' : 'bg-slate-800'}`} />
-                        <button onClick={zoomOut} className={btn} title="Zoom arrière"><Minus className="w-5 h-5 md:w-6 md:h-6" /></button>
+                        <button onClick={zoomOut} className={btn} title="Zoom arrière"><Minus className="w-4 h-4 md:w-6 md:h-6" /></button>
                     </div>
 
-                    <div className="flex flex-row md:flex-col gap-2 items-end justify-end">
+                    <div className="flex flex-row md:flex-col gap-1.5 md:gap-2 items-end justify-end flex-wrap max-w-[90vw] md:max-w-none">
                         {/* Map Management Group */}
-                        <div className={`${brutalBox} flex flex-row md:flex-col p-1 rounded-xl md:rounded-2xl`}>
+                        <div className={`${brutalBox} flex flex-row md:flex-col p-0.5 md:p-1 rounded-xl md:rounded-2xl`}>
                             {/* Library */}
                             <button onClick={() => setShowLibrary(true)} className={btn} title="Mes parcours">
                                 <FolderOpen className="w-5 h-5 md:w-6 md:h-6" />
@@ -202,7 +202,7 @@ const OverlayUI: React.FC = () => {
                         )}
 
                         {/* System Controls Group */}
-                        <div className={`${brutalBox} flex flex-row md:flex-col p-1 rounded-xl md:rounded-2xl`}>
+                        <div className={`${brutalBox} flex flex-row md:flex-col p-0.5 md:p-1 rounded-xl md:rounded-2xl`}>
                             {/* AI Assistant */}
                             <button onClick={() => setShowAiAssistant(true)} className={btn} title="Assistant IA">
                                 <Sparkles className="w-5 h-5 md:w-6 md:h-6 text-indigo-500 font-black" />
