@@ -1,0 +1,60 @@
+# Profil : VeloTrack VTT-AE (VTT électrique tout-terrain)
+# Optimisé pour VTT à assistance électrique avec pneus gravel/all-terrain
+#
+# Philosophie :
+# - Priorité aux chemins forestiers, single tracks, tracks VTT
+# - Dénivelé ignoré (assistance électrique compense)
+# - Accepte surfaces techniques (cailloux, terre, herbe)
+# - Évite routes à fort trafic et asphalte lisse
+# - Interdit sand/mud profond (enlisement)
+
+# --- CONFIGURATION GLOBALE ---
+assign validForBikes        = true
+assign initialcost          = 0
+assign initialclassifier    = 0
+
+# VTT-AE : le dénivelé n'est pas un frein — on l'ignore
+assign downhillcost         = 0
+assign downhillcutoff       = 1.5
+assign uphillcost           = 0
+assign uphillcutoff         = 1.5
+
+# --- SURFACES ---
+# Le VTT-AE aime la terre, le gravier, les cailloux — pas l'asphalte lisse
+assign surface_penalty =
+  if surface=asphalt|paved|concrete then 2.5        # Asphalte = pénalisé (pas l'usage VTT)
+  else if surface=compacted then 1.1                 # Compact = OK mais pas idéal
+  else if surface=gravel|fine_gravel then 0.7        # Gravier = très bien
+  else if surface=unpaved|dirt|earth|ground then 0.6 # Terre = parfait VTT
+  else if surface=grass|grass_paver then 0.9         # Herbe = acceptable
+  else if surface=rock|pebblestone then 1.0          # Cailloux = OK VTT
+  else if surface=sand then 4.0                      # Sable = risque enlisement
+  else if surface=mud then 6.0                       # Boue = à éviter
+  else 1.0
+
+# --- TYPES DE ROUTES ---
+# Priorité maximum : tracks forestiers, chemins, single tracks VTT
+assign highway_penalty =
+  if highway=motorway|trunk|primary then 30.0        # Interdit — dangereux
+  else if highway=secondary then 4.0                 # Évité fortement
+  else if highway=tertiary then 1.8                  # Acceptable si pas d'alternative
+  else if highway=unclassified then 1.2              # Route locale = OK
+  else if highway=residential|service then 1.3       # Quartier/service = passable
+  else if highway=track then 0.5                     # Track forestier = privilégié
+  else if highway=path then 0.6                      # Sentier = très bien VTT
+  else if highway=cycleway then 0.8                  # Piste cyclable = bien
+  else if highway=bridleway then 0.7                 # Chemin équestre = parfait
+  else if highway=footway then 1.5                   # Piéton = acceptable si pas mieux
+  else 1.0
+
+# --- MTB SPECIFIC ---
+# Prendre en compte les tags OSM spécifiques VTT
+assign mtb_penalty =
+  if mtb:scale=0|1 then 0.5                          # VTT facile/intermédiaire = idéal
+  else if mtb:scale=2 then 0.7                       # VTT modéré = bien
+  else if mtb:scale=3 then 1.2                       # VTT difficile = possible avec AE
+  else if mtb:scale=4|5|6 then 3.0                   # Expert = trop technique
+  else 1.0
+
+# --- CALCUL FINAL ---
+assign costfactor = multiply surface_penalty highway_penalty
