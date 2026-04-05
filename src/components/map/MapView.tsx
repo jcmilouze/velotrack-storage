@@ -20,11 +20,16 @@ const MapView: React.FC = () => {
         updateWaypointPosition,
         removeWaypoint,
         setRouteGeometry,
+        setRouteSummary,
+        setManeuvers,
+        setElevationProfile,
+        setRouteCoordinates,
         isLoading,
         routeType,
         avoidHighways,
         theme,
         hoveredPosition,
+        language
     } = useRouteStore();
 
     const { mapRef, isLoaded } = useMapContext();
@@ -236,6 +241,10 @@ const MapView: React.FC = () => {
     useEffect(() => {
         if (waypoints.length < 2) {
             setRouteGeometry(null);
+            setRouteSummary(null);
+            setManeuvers([]);
+            setElevationProfile(null);
+            setRouteCoordinates([]);
             return;
         }
 
@@ -252,7 +261,7 @@ const MapView: React.FC = () => {
 
         const timeout = setTimeout(triggerRecalculate, 400); // debounce to avoid spamming APIs during drag
         return () => clearTimeout(timeout);
-    }, [waypoints, routeType, avoidHighways, setRouteGeometry]);
+    }, [waypoints, routeType, avoidHighways, language, setRouteGeometry, setRouteSummary, setManeuvers, setElevationProfile, setRouteCoordinates]);
 
     // Handle hover states from elsewhere (e.g. waypoint list)
     // Removed direct hoveredPosition store access to simplify,

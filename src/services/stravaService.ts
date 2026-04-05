@@ -86,12 +86,64 @@ export const stravaAuth = {
 
     logout: () => {
         localStorage.removeItem('strava_token');
+    },
+
+    /** F1: Refresh token automatically if expired */
+    refreshIfNeeded: async () => {
+        const tokenData = stravaAuth.getToken();
+        if (!tokenData) return null;
+
+        const now = Math.floor(Date.now() / 1000);
+        // Refresh if expiring in less than 5 minutes
+        if (tokenData.expiresAt && tokenData.expiresAt > now + 300) {
+            return tokenData.accessToken;
+        }
+
+        console.log('[VeloTrack] Strava token expired or expiring soon, refreshing...');
+        
+        try {
+            if (STRAVA_PROXY_URL) {
+                const response = await fetch(`${STRAVA_PROXY_URL}/refresh`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ refresh_token: tokenData.refreshToken }),
+                });
+                if (!response.ok) throw new Error('Refresh proxy failed');
+                const data = await response.json();
+                stravaAuth.saveToken(data);
+                return data.access_token || data.accessToken;
+            }
+
+            const clientSecret = import.meta.env.VITE_STRAVA_CLIENT_SECRET;
+            if (!clientSecret) throw new Error('No secret for refresh');
+
+            const response = await fetch('https://www.strava.com/oauth/token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    client_id: CLIENT_ID,
+                    client_secret: clientSecret,
+                    grant_type: 'refresh_token',
+                    refresh_token: tokenData.refreshToken,
+                }),
+            });
+
+            if (!response.ok) throw new Error('Direct refresh failed');
+            const data = await response.json();
+            stravaAuth.saveToken(data);
+            return data.access_token;
+        } catch (err) {
+            console.error('[VeloTrack] Strava refresh failed:', err);
+            stravaAuth.logout();
+            throw new Error('Votre session Strava a expiré, merci de vous reconnecter.');
+        }
     }
 };
 
 export const uploadToStrava = async (gpxBlob: Blob, name: string) => {
-    const tokenData = stravaAuth.getToken();
-    if (!tokenData || !tokenData.accessToken) {
+    // F1: Ensure token is fresh before upload
+    const accessToken = await stravaAuth.refreshIfNeeded();
+    if (!accessToken) {
         throw new Error("Non connecté à Strava");
     }
 
@@ -104,7 +156,7 @@ export const uploadToStrava = async (gpxBlob: Blob, name: string) => {
     const response = await fetch('https://www.strava.com/api/v3/uploads', {
         method: 'POST',
         headers: {
-            'Authorization': `Bearer ${tokenData.accessToken}`
+            'Authorization': `Bearer ${accessToken}`
         },
         body: formData
     });

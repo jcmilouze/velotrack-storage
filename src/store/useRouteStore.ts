@@ -19,6 +19,7 @@ export type RouteType = 'road' | 'gravel';
 export type Theme = 'light' | 'dark';
 export type MapStyle = 'auto' | 'light' | 'dark' | 'satellite' | 'outdoors';
 export type ClickMode = 'setA' | 'setB';
+export type Language = 'fr' | 'en' | 'de' | 'es';
 
 export interface Waypoint {
     id: string;
@@ -46,6 +47,7 @@ interface RouteState {
     isBottomSheetOpen: boolean;
     showLayers: boolean;         // F8 — display cycling network
     showLoop: boolean;
+    language: Language;          // F10 — turn-by-turn language
 
     addWaypoint: (pos: Position, name?: string) => void;
     removeWaypoint: (id: string) => void;
@@ -69,6 +71,7 @@ interface RouteState {
     setIsBottomSheetOpen: (open: boolean) => void;
     setShowLayers: (show: boolean) => void;
     setShowLoop: (show: boolean) => void;
+    setLanguage: (lang: Language) => void;
     closeLoop: () => void;
     clearRoute: () => void;
     cleanupWaypoints: () => void;
@@ -137,6 +140,7 @@ export const useRouteStore = create<RouteState>((set, get) => ({
     isBottomSheetOpen: false,
     showLayers: false,
     showLoop: false,
+    language: 'fr',
 
     get isLoopClosed() {
         return getIsClosed(get().waypoints);
@@ -201,7 +205,7 @@ export const useRouteStore = create<RouteState>((set, get) => ({
         if (index === -1) return state;
 
         const [lng, lat] = pos;
-        if (isNaN(lng) || isNaN(lat)) { // garde seulement les coordonnées réellement invalides
+        if (isNaN(lng) || isNaN(lat)) {
             console.warn(`[VeloTrack] Refusing invalid coordinate update:`, id, pos);
             return state;
         }
@@ -226,7 +230,6 @@ export const useRouteStore = create<RouteState>((set, get) => ({
         snappedLocations.forEach((snappedPos, i) => {
             const wp = wps[i];
             if (!wp) return;
-            // Tolerance de ~10m pour éviter les micro-sauts invisibles
             if (haversineDistance(wp.position as [number, number], snappedPos) > 10) {
                 wps[i] = { ...wp, position: snappedPos };
                 changed = true;
@@ -273,6 +276,7 @@ export const useRouteStore = create<RouteState>((set, get) => ({
     setIsBottomSheetOpen: (open) => set({ isBottomSheetOpen: open }),
     setShowLayers: (show) => set({ showLayers: show }),
     setShowLoop: (show) => set({ showLoop: show }),
+    setLanguage: (language) => set({ language }),
 
     closeLoop: () => set((state) => {
         const { waypoints } = state;
@@ -280,10 +284,9 @@ export const useRouteStore = create<RouteState>((set, get) => ({
         const start = waypoints[0];
         const end = waypoints[waypoints.length - 1];
 
-        // If distance is very small, assume already closed
         const lastPos = end.position as [number, number];
         const firstPos = start.position as [number, number];
-        if (haversineDistance(firstPos, lastPos) < 5) return state; // déjà fermé
+        if (haversineDistance(firstPos, lastPos) < 5) return state;
 
         const label = LABELS[waypoints.length] ?? (waypoints.length + 1).toString();
         const wp: Waypoint = { 
@@ -314,21 +317,19 @@ export const useRouteStore = create<RouteState>((set, get) => ({
 
         const { waypoints, routeCoordinates } = state;
         const cleanedWps: Waypoint[] = [waypoints[0]]; // Always keep start
-        const isClosed = (state as any).isLoopClosed; // Accessing the helper via cast if needed or state
+        const isClosed = getIsClosed(waypoints);
         const endIdx = isClosed ? waypoints.length - 2 : waypoints.length - 1;
 
         for (let i = 1; i <= endIdx; i++) {
             const wp = waypoints[i];
             const pos = wp.position;
             
-            // On cherche la distance minimale de ce point par rapport au tracé RÉEL
             let minDist = Infinity;
             for (const coord of routeCoordinates) {
                 const d = haversineDistance(pos as [number, number], coord as [number, number]);
                 if (d < minDist) minDist = d;
             }
 
-            // Seuil de 20m pour détecter un point "orphelin" qui dévie trop du tracé fluide
             if (minDist < 20) {
                 cleanedWps.push(wp);
             } else {
@@ -352,4 +353,3 @@ export const useRouteStore = create<RouteState>((set, get) => ({
         return { waypoints: reversed };
     }),
 }));
-

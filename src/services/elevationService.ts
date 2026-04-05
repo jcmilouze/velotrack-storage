@@ -53,13 +53,16 @@ export const fetchElevationProfile = async (
 
         if (!heights.length) return null;
 
-        // Compute stats
+        // F2 — Compute stats with stability threshold (1.5m) to avoid counting GPS jitter/noise
+        const STABILITY_THRESHOLD = 1.5;
         let ascent = 0;
         let descent = 0;
         for (let i = 1; i < heights.length; i++) {
             const diff = heights[i] - heights[i - 1];
-            if (diff > 0) ascent += diff;
-            else descent += Math.abs(diff);
+            if (Math.abs(diff) > STABILITY_THRESHOLD) {
+                if (diff > 0) ascent += diff;
+                else descent += Math.abs(diff);
+            }
         }
 
         return {

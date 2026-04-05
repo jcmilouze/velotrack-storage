@@ -84,6 +84,7 @@ const fetchFromValhalla = async (
     waypoints: Position[],
     routeType: RouteType,
     avoidHighways: boolean,
+    language: string,
     elevation?: 'flat' | 'hilly' | 'mountain'
 ) => {
     const query = {
@@ -100,6 +101,7 @@ const fetchFromValhalla = async (
         }),
         ...getValhallaCostingOptions(routeType, avoidHighways, elevation),
         units: 'kilometers',
+        language: language === 'fr' ? 'fr-FR' : language, // Valhalla supports fr-FR or short codes
     };
 
     const url = `${VALHALLA_URL}?json=${encodeURIComponent(JSON.stringify(query))}`;
@@ -149,10 +151,10 @@ const parseValhallaResponse = (data: any) => {
 
 // ─── OSRM Fallback ────────────────────────────────────────────────────────
 
-const fetchFromOSRM = async (waypoints: Position[]) => {
+const fetchFromOSRM = async (waypoints: Position[], language: string) => {
     if (!OSRM_FALLBACK_URL) throw new Error('No OSRM URL configured');
     const coordsStr = waypoints.map(p => `${p[0]},${p[1]}`).join(';');
-    const url = `${OSRM_FALLBACK_URL}/route/v1/cycling/${coordsStr}?overview=full&geometries=geojson&steps=true`;
+    const url = `${OSRM_FALLBACK_URL}/route/v1/cycling/${coordsStr}?overview=full&geometries=geojson&steps=true&languages=${language}`;
     const res = await fetch(url);
     if (!res.ok) throw new Error(`OSRM: ${res.status}`);
     return res.json();
@@ -222,29 +224,56 @@ const fetchFromBRouter = async (waypoints: Position[], routeType: RouteType) => 
 const parseBRouterResponse = (data: any) => {
     if (!data?.features?.length) throw new Error('No route in BRouter response');
 
-    const feature = data.features[0];
-    
-    // BRouter can return LineString or MultiLineString
-    let coords: number[][] = [];
-    if (feature.geometry.type === 'MultiLineString') {
-        // Flatten array of arrays of coordinates
-        coords = feature.geometry.coordinates.flat();
-    } else {
-        coords = feature.geometry.coordinates; // [lng, lat][]
+    const coords: number[][] = [];
+    let totalDist = 0;
+    let totalTime = 0;
+    let totalCost = 0;
+
+    // Aggregate all features (segments)
+    for (const feature of data.features) {
+        if (feature.geometry.type === 'MultiLineString') {
+            coords.push(...feature.geometry.coordinates.flat());
+        } else {
+            coords.push(...feature.geometry.coordinates);
+        }
+        const props = feature.properties || {};
+        totalDist += (parseInt(props['track-length']) || 0);
+        totalTime += (parseInt(props['total-time']) || 0);
+        totalCost += (parseInt(props['cost']) || 0);
     }
     
-    const trackProps = feature.properties || {};
+    const summary: RouteSummary = { 
+        length: totalDist / 1000, 
+        time: totalTime, 
+        cost: totalCost 
+    };
+ 
+    const lang = useRouteStore.getState().language;
+    const isFr = lang === 'fr';
 
-    const distanceKm = (parseInt(trackProps['track-length']) || 0) / 1000;
-    const timeSecs = parseInt(trackProps['total-time']) || 0;
-    const cost = parseInt(trackProps['cost']) || 0;
-
-    const summary: RouteSummary = { length: distanceKm, time: timeSecs, cost };
-
+    // F3 — Generate baseline maneuvers since BRouter doesn't provide them natively via simple GeoJSON
+    const maneuvers: RouteManeuver[] = [
+        { 
+            instruction: isFr ? 'Départ du parcours (Moteur BRouter)' : 'Route start (BRouter Engine)', 
+            length: 0, time: 0, type: 0 
+        },
+        { 
+            instruction: isFr ? 'Arrivée du parcours' : 'Route finish', 
+            length: summary.length, time: summary.time, type: 24 
+        }
+    ];
+ 
     return {
-        routeGeometry: feature,
+        routeGeometry: {
+            type: 'Feature',
+            properties: { summary },
+            geometry: {
+                type: 'LineString',
+                coordinates: coords
+            }
+        },
         summary,
-        maneuvers: [], // BRouter GeoJSON doesn't provide rich text maneuvers natively via /brouter
+        maneuvers,
         coordinates: coords,
         snappedLocations: undefined,
     };
@@ -256,6 +285,7 @@ export const getRouteData = async (
     waypoints: Position[],
     routeType: RouteType,
     avoidHighways: boolean,
+    language: string,
     elevation?: 'flat' | 'hilly' | 'mountain'
 ) => {
     let lastError: any = null;
@@ -273,8 +303,8 @@ export const getRouteData = async (
 
     // 2. Fallback Valhalla (API externe — généraliste)
     try {
-        console.log(`[VeloTrack] Valhalla: Fallback ${routeType.toUpperCase()}...`);
-        const data = await fetchFromValhalla(waypoints, routeType, avoidHighways, elevation);
+        console.log(`[VeloTrack] Valhalla: Fallback ${routeType.toUpperCase()} (${language})...`);
+        const data = await fetchFromValhalla(waypoints, routeType, avoidHighways, language as any, elevation);
         return parseValhallaResponse(data);
     } catch (err) {
         lastError = err;
@@ -283,8 +313,8 @@ export const getRouteData = async (
 
     // 3. Fallback OSRM (Dernier recours, routage basique)
     try {
-        console.log(`[VeloTrack] OSRM: Routage de secours...`);
-        const data = await fetchFromOSRM(waypoints);
+        console.log(`[VeloTrack] OSRM: Routage de secours (${language})...`);
+        const data = await fetchFromOSRM(waypoints, language);
         return parseOSRMResponse(data);
     } catch (err) {
         console.error('[VeloTrack] All routing engines failed', { valhalla: lastError, osrm: err });
@@ -332,13 +362,14 @@ export const calculateRoute = async (
     const store = useRouteStore.getState();
     const type = overrides?.routeType ?? store.routeType;
     const avoid = overrides?.avoidHighways ?? store.avoidHighways;
+    const language = store.language;
     const elevation = overrides?.elevation; // Optional
 
     store.setIsLoading(true);
     store.setError(null);
 
     try {
-        const result = await getRouteData(waypoints, type, avoid, elevation);
+        const result = await getRouteData(waypoints, type, avoid, language, elevation);
         await commitRouteData(result);
     } catch (error) {
         store.setError(error instanceof Error ? error.message : 'Erreur de calcul d\'itinéraire');
