@@ -96,6 +96,44 @@ const LoopModal: React.FC<Props> = ({ onClose, isDark }) => {
         });
     };
 
+    // ── Mode barre (après génération) ─────────────────────────────────────
+    if (isGenerated) {
+        return (
+            <motion.div
+                initial={{ y: 80, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 80, opacity: 0 }}
+                className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 w-full max-w-sm mx-4 px-4"
+            >
+                <div className={`${brutalModal} px-4 py-3 flex items-center gap-3`}>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-xs font-black uppercase tracking-tight truncate">🔄 Boucle auto</p>
+                        <p className={`text-[10px] font-bold uppercase ${subtle}`}>
+                            Variante {rotationOffset / 30 + 1} · {distance} km · {directions.join('+')}
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={handleRegenerate}
+                        className={`px-4 py-2.5 rounded-xl border-[2px] border-slate-800 shadow-[3px_3px_0px_#1e293b] font-black text-xs uppercase tracking-wide flex items-center gap-1.5 transition-transform active:translate-y-0.5 active:shadow-none flex-shrink-0 ${isDark ? 'bg-slate-700 text-slate-100 hover:bg-slate-600' : 'bg-white text-slate-900 hover:bg-slate-100'}`}
+                    >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        Autre
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="px-4 py-2.5 rounded-xl bg-brand-primary text-white border-[2px] border-slate-800 shadow-[3px_3px_0px_#1e293b] font-black text-xs uppercase tracking-wide flex items-center gap-1.5 hover:brightness-110 transition-transform active:translate-y-0.5 active:shadow-none flex-shrink-0"
+                    >
+                        <Check className="w-3.5 h-3.5" />
+                        Valider
+                    </button>
+                </div>
+            </motion.div>
+        );
+    }
+
+    // ── Mode formulaire (avant génération) ────────────────────────────────
     return (
         <motion.div
             initial={{ opacity: 0 }}
@@ -116,7 +154,7 @@ const LoopModal: React.FC<Props> = ({ onClose, isDark }) => {
                         <h2 className="text-xl font-black uppercase tracking-tight flex items-center gap-2">🔄 Boucle auto</h2>
                         <p className={`text-xs ${subtle} mt-0.5 font-bold uppercase`}>Depuis : {departure ? `${departure[1].toFixed(4)}, ${departure[0].toFixed(4)}` : 'centre de la carte'}</p>
                     </div>
-                    <button onClick={onClose} className={`p-2 transition-colors ${btnHover}`}>
+                    <button type="button" onClick={onClose} title="Fermer" aria-label="Fermer" className={`p-2 transition-colors ${btnHover}`}>
                         <X className="w-6 h-6" />
                     </button>
                 </div>
@@ -131,9 +169,9 @@ const LoopModal: React.FC<Props> = ({ onClose, isDark }) => {
                         type="range"
                         min={10} max={200} step={5}
                         value={distance}
+                        aria-label="Distance cible en kilomètres"
                         onChange={(e) => setDistance(Number(e.target.value))}
-                        className={`w-full h-3 appearance-none rounded-full ${isDark ? 'bg-slate-600' : 'bg-slate-200'} border-[2px] border-slate-800 outline-none`}
-                        style={{ accentColor: isDark ? '#FC4C02' : '#FC4C02' }}
+                        className={`w-full h-3 appearance-none rounded-full accent-brand-primary ${isDark ? 'bg-slate-600' : 'bg-slate-200'} border-[2px] border-slate-800 outline-none`}
                     />
                     <div className={`flex justify-between text-xs font-bold ${subtle} mt-2 uppercase`}>
                         <span>10 km</span>
@@ -154,6 +192,7 @@ const LoopModal: React.FC<Props> = ({ onClose, isDark }) => {
                                 ) : (
                                     <button
                                         key={dir}
+                                        type="button"
                                         onClick={() => toggleDirection(dir)}
                                         className={`w-12 h-12 text-xl font-bold transition-transform active:translate-y-1 active:shadow-none border-[2px] border-slate-800 shadow-[2px_2px_0px_#1e293b] rounded-xl ${directions.includes(dir)
                                             ? 'bg-brand-primary text-white'
@@ -172,39 +211,17 @@ const LoopModal: React.FC<Props> = ({ onClose, isDark }) => {
                     </p>
                 </div>
 
-                {/* Buttons */}
-                {!isGenerated ? (
-                    <button
-                        type="button"
-                        onClick={handleGenerate}
-                        className="w-full py-4 rounded-2xl bg-brand-primary text-white border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 hover:brightness-110 transition-transform active:translate-y-1 active:shadow-none"
-                    >
-                        <RefreshCw className="w-5 h-5" />
-                        Générer la boucle
-                    </button>
-                ) : (
-                    <div className="flex gap-3">
-                        <button
-                            type="button"
-                            onClick={handleRegenerate}
-                            className={`flex-1 py-4 rounded-2xl border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 transition-transform active:translate-y-1 active:shadow-none ${isDark ? 'bg-slate-700 text-slate-100 hover:bg-slate-600' : 'bg-white text-slate-900 hover:bg-slate-100'}`}
-                        >
-                            <RefreshCw className="w-4 h-4" />
-                            Autre boucle
-                        </button>
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="flex-1 py-4 rounded-2xl bg-brand-primary text-white border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 hover:brightness-110 transition-transform active:translate-y-1 active:shadow-none"
-                        >
-                            <Check className="w-4 h-4" />
-                            Valider
-                        </button>
-                    </div>
-                )}
+                <button
+                    type="button"
+                    onClick={handleGenerate}
+                    className="w-full py-4 rounded-2xl bg-brand-primary text-white border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 hover:brightness-110 transition-transform active:translate-y-1 active:shadow-none"
+                >
+                    <RefreshCw className="w-5 h-5" />
+                    Générer la boucle
+                </button>
 
                 <p className={`text-[10px] font-bold uppercase ${subtle} text-center mt-3`}>
-                    {isGenerated ? `Variante ${rotationOffset / 30 + 1} · rotation ${rotationOffset}°` : 'La distance finale dépendra des routes existantes.'}
+                    La distance finale dépendra des routes existantes.
                 </p>
             </motion.div>
         </motion.div>
