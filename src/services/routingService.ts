@@ -186,7 +186,9 @@ const parseOSRMResponse = (data: any) => {
 // ─── BRouter ──────────────────────────────────────────────────────────────
 
 const getBRouterProfile = (routeType: RouteType) => {
-    // Profil custom "gravel-master" (priorité graviers/chemins) ou "fastbike" (route)
+    // Profils BRouter installés dans le container VPS (/brouter/profiles/)
+    // gravel-master = profil custom injecté au démarrage du container
+    // fastbike = profil standard BRouter pour vélo de route rapide
     return routeType === 'gravel' ? 'gravel-master' : 'fastbike';
 };
 
@@ -257,22 +259,20 @@ export const getRouteData = async (
 ) => {
     let lastError: any = null;
 
-    // 1. Priorité BRouter (Gravel Master !)
-    // Utilisé en priorité pour le mode 'gravel' via VPS ou Local
-    if (routeType === 'gravel') {
-        try {
-            console.log(`[VeloTrack] BRouter: Routage GRAVEL local...`);
-            const data = await fetchFromBRouter(waypoints, routeType);
-            return parseBRouterResponse(data);
-        } catch (err) {
-            lastError = err;
-            console.warn('[VeloTrack] BRouter failed, trying Valhalla fallback...', err);
-        }
+    // 1. Priorité BRouter (VPS local — spécialisé vélo, sans limite)
+    // Profils: fastbike (route rapide) | gravel-master (gravel/chemins)
+    try {
+        console.log(`[VeloTrack] BRouter: Routage ${routeType.toUpperCase()} (${getBRouterProfile(routeType)})...`);
+        const data = await fetchFromBRouter(waypoints, routeType);
+        return parseBRouterResponse(data);
+    } catch (err) {
+        lastError = err;
+        console.warn('[VeloTrack] BRouter failed, trying Valhalla fallback...', err);
     }
 
-    // 2. Fallback Valhalla (ou priorité Road)
+    // 2. Fallback Valhalla (API externe — généraliste)
     try {
-        console.log(`[VeloTrack] Valhalla: Routage ${routeType.toUpperCase()}...`);
+        console.log(`[VeloTrack] Valhalla: Fallback ${routeType.toUpperCase()}...`);
         const data = await fetchFromValhalla(waypoints, routeType, avoidHighways, elevation);
         return parseValhallaResponse(data);
     } catch (err) {
