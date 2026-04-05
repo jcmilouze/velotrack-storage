@@ -43,6 +43,28 @@ const MapView: React.FC = () => {
     const markerPositionsRef = useRef<Map<string, [number, number]>>(new Map());
     const hoverMarkerRef = useRef<maplibregl.Marker | null>(null);
 
+    // F1 — Fix Cursor: Mouse should be a crosshair for precise clicking, not a hand (pointer)
+    useEffect(() => {
+        if (!mapInstance) return;
+
+        const canvas = mapInstance.getCanvas();
+        const setCrosshair = () => { canvas.style.cursor = 'crosshair'; };
+        const setGrabbing = () => { canvas.style.cursor = 'grabbing'; };
+
+        setCrosshair();
+
+        mapInstance.on('mousedown', setGrabbing);
+        mapInstance.on('mouseup', setCrosshair);
+        mapInstance.on('mouseenter', setCrosshair);
+
+        return () => {
+            mapInstance.off('mousedown', setGrabbing);
+            mapInstance.off('mouseup', setCrosshair);
+            mapInstance.off('mouseenter', setCrosshair);
+            canvas.style.cursor = '';
+        };
+    }, [mapInstance]);
+
     const createMarkerEl = useCallback((label: string, id: string, color: string) => {
         const el = document.createElement('div');
         el.className = 'custom-marker route-point-marker';
@@ -248,10 +270,10 @@ const MapView: React.FC = () => {
                     <SegmentLayer map={mapInstance} />
                 </>
             )}
-            {/* Click mode indicator */}
+            {/* Click mode indicator - moved higher on mobile to avoid iOS overlap issues */}
             {!isLoading && (
-                <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
-                    <div className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border-2 border-slate-800 shadow-[3px_3px_0px_#1e293b] transition-all ${isDark ? 'bg-slate-800 text-slate-200' : 'bg-white text-slate-800'}`}>
+                <div className="absolute bottom-40 md:bottom-28 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
+                    <div className={`px-4 py-2 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] transition-all ${isDark ? 'bg-slate-800 text-slate-200' : 'bg-white text-slate-800'}`}>
                         {!hasStart ? '📍 Cliquez pour poser le départ' : '➕ Cliquez pour ajouter une étape'}
                     </div>
                 </div>
