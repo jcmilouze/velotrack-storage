@@ -35,6 +35,12 @@ app.get('/brouter*', async (req, res) => {
     if (!subPath) subPath = '/brouter'; // Par défaut BRouter attend souvent /brouter
     
     const params = new URLSearchParams(Object.entries(req.query).map(([k, v]) => [k, String(v)]));
+    
+    // 🔥 AUTO-FIX IMPORTANT : Réécriture à la volée du profil s'il est erroné du côté du Frontend
+    if (params.get('profile') === 'gravel-master') {
+        params.set('profile', 'gravel');
+    }
+    
     const targetUrl = `${BROUTER_URL}${subPath}?${params.toString()}`;
     
     console.log(`[Bridge] Proxy -> ${targetUrl}`);
