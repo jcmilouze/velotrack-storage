@@ -9,14 +9,14 @@
 
 | # | Fichier | Ligne | Description | Statut |
 |---|---------|-------|-------------|--------|
-| C1 | `stravaService.ts` | 25 | `VITE_STRAVA_CLIENT_SECRET` exposé en frontend — OAuth2 secret ne doit JAMAIS être côté client | ⚠️ PARTIAL — bloqué en prod, backend proxy requis |
+| C1 | `stravaService.ts` | 25 | `VITE_STRAVA_CLIENT_SECRET` exposé en frontend — OAuth2 secret ne doit JAMAIS être côté client | ✅ FIXED (Proxy support) |
 | C2 | `routingService.ts` | 244 | `parseBRouterResponse()` ne retourne pas `snappedLocations` → crash si BRouter utilisé | ✅ FIXED |
 | C3 | `gpxExport.ts` | 28 | Division par zéro si `totalPoints === 1` (`index / (totalPoints - 1)`) | ✅ FIXED |
 | C4 | `weatherService.ts` | 44 | Modulo wind direction : `Math.round(350/45) = 8`, `dirs[8] = undefined`. Fix : `((Math.round(deg/45) % 8) + 8) % 8` | ✅ FIXED |
 | C5 | `geocodingService.ts` | 15 | Race condition throttling : `lastRequestTime` non-atomique, appels parallèles bypasse rate limit | ✅ FIXED |
 | C6 | `MapView.tsx` | 104 | Distance flicker prevention utilise Manhattan distance au lieu d'Euclidienne — marqueurs mal positionnés | ✅ FIXED |
 | C7 | `useRouteStore.ts` | 95 | `getIsClosed` compare degrés décimaux absolus (0.0001°) : tolérance latitude-dépendante (~11m équateur, ~5m à 60°N) | ✅ FIXED |
-| C8 | `AiAssistant.tsx` | 100 | Double `JSON.parse` non sécurisée sur réponse API — XSS possible si serveur compromis | ⬜ OPEN |
+| C8 | `AiAssistant.tsx` | 111 | Double `JSON.parse` non sécurisée sur réponse API — XSS possible si serveur compromis | ✅ FIXED 2026-04-05 |
 
 ---
 
@@ -54,18 +54,18 @@
 |---|---------|-------|-------------|--------|
 | M22 | `MapView.tsx` | 98 | Marker drag bloque toutes les mises à jour du store — état incohérent possible | ⬜ OPEN |
 | M23 | `MapView.tsx` | 133 | `setTimeout(50ms)` pour re-projection marker — solution fragile sur mobile/lent | ⬜ OPEN |
-| M24 | `MapView.tsx` | 91 | Check `Math.abs(lng) < 0.0001` invalide les positions proches du méridien d'Afrique centrale | ⬜ OPEN |
+| M24 | `MapView.tsx` | 91 | Check `Math.abs(lng) < 0.0001` invalide les positions proches du méridien d'Afrique centrale | ✅ FIXED |
 | M25 | `MapView.tsx` | 199 | Pas de throttling sur mises à jour massives pendant drag multi-marker | ⬜ OPEN |
 | M26 | `RouteLayer.tsx` | 58 | Race condition sur `styledata` handler : style change rapide peut corrompre la source `route-source` | ⬜ OPEN |
 | M27 | `SegmentLayer.tsx` | 12 | Memory leak : markers et popups recréés à chaque render sans nettoyage explicite | ⬜ OPEN |
 | M28 | `CyclingLayer.tsx` | 40 | Duplicate `addLayer()` sur style change → erreur MapLibre "Layer already exists" | ⬜ OPEN |
 | M29 | `OverlayUI.tsx` | 48 | `decodeRouteFromUrl()` sans validation de structure — crash silencieux sur URL malformée | ⬜ OPEN |
 | M30 | `OverlayUI.tsx` | 61 | Race condition `handleLocate` + `setPointA` : état incohérent si clic pendant géoloc async | ⬜ OPEN |
-| M31 | `BottomSheet.tsx` | 72 | VAM : division par zéro si `routeSummary.time === 0` → `Infinity` affiché | ⬜ OPEN |
+| M31 | `BottomSheet.tsx` | 72 | VAM : division par zéro si `routeSummary.time === 0` → `Infinity` affiché | ✅ FIXED |
 | M32 | `BottomSheet.tsx` | 49 | `fetchWeather()` sans `.catch()` — composant peut casser si API météo échoue | ⬜ OPEN |
 | M33 | `SearchBar.tsx` | 40 | Race condition : requête lente overwrite résultats d'une requête plus récente | ⬜ OPEN |
 | M34 | `SearchBar.tsx` | 69 | `setClickMode` bascule vers `setA` au lieu de `setB` après ajout waypoint | ⬜ OPEN |
-| M35 | `ElevationChart.tsx` | 26 | Division par zéro si `samples.length === 1` : `i / (samples.length - 1)` | ⬜ OPEN |
+| M35 | `ElevationChart.tsx` | 26 | Division par zéro si `samples.length === 1` : `i / (samples.length - 1)` | ✅ FIXED |
 | M36 | `AiAssistant.tsx` | 114 | Validation `distanceKm` insuffisante : pas de range check, valeurs négatives ou énormes acceptées | ⬜ OPEN |
 | M37 | `AiAssistant.tsx` | 128 | Requêtes `searchAddress()` / `fetchNearestAmenity()` sans timeout — UI peut se bloquer | ⬜ OPEN |
 | M38 | `AiAssistant.tsx` | 200 | Tableau `directions` de l'IA non validé — valeurs invalides acceptées silencieusement | ⬜ OPEN |
@@ -75,6 +75,7 @@
 | M42 | `MapContext.tsx` | 115 | Comparaison style par référence (`!==`) au lieu de par valeur — `setStyle()` appelé inutilement | ⬜ OPEN |
 | M43 | `LoopModal.tsx` | 37 | Race condition : `departure` peut être null si `mapRef.current` est null | ⬜ OPEN |
 | M44 | `useStravaAuth.ts` | 23 | URL params nettoyés AVANT confirmation succès `exchangeToken()` | ⬜ OPEN |
+| M45 | `OverlayUI.tsx` | N/A | Encombrement vertical/horizontal massif sur mobile (375px) | ✅ FIXED |
 
 ---
 
@@ -139,3 +140,5 @@
 - [ ] Backend proxy Strava (CORS + secret)
 - [ ] Token refresh Strava
 - [ ] Valider toutes les réponses API (AiAssistant, overpassService)
+- [x] Optimiser l'UI pour usage mobile (OverlayUI compact)
+- [ ] Debugger l'erreur de projection MapLibre v5 (interne à la lib mais non-bloquant)

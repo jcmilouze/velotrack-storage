@@ -11,7 +11,7 @@ import { formatDistance, formatDuration } from '../../services/routingService';
 import { downloadGpx, generateGpx } from '../../services/gpxExport';
 import { fetchWeather, getWeatherDescription } from '../../services/weatherService';
 import { useMapContext } from '../../context/MapContext';
-import { useGarminSync } from '../../hooks/useGarminSync';
+import { useStravaAuth } from '../../hooks/useStravaAuth';
 import ElevationChart from './ElevationChart';
 
 const BottomSheet: React.FC = () => {
@@ -27,13 +27,13 @@ const BottomSheet: React.FC = () => {
     const { fitBounds } = useMapContext();
 
     const [isExported, setIsExported] = useState(false);
-    const [isGarminUploading, setIsGarminUploading] = useState(false);
-    const [isGarminSuccess, setIsGarminSuccess] = useState(false);
+    const [isStravaUploading, setIsStravaUploading] = useState(false);
+    const [isStravaSuccess, setIsStravaSuccess] = useState(false);
     const [isEditingName, setIsEditingName] = useState(false);
     const [weather, setWeather] = useState<Awaited<ReturnType<typeof fetchWeather>>>(null);
     const [mobileExpanded, setMobileExpanded] = useState(false);
 
-    const { isLoading: isGarminLoading } = useGarminSync();
+    const { isConnected: isStravaConnected, login: stravaLogin } = useStravaAuth();
 
     const isDark = theme === 'dark';
     const brutalSheet = isDark
@@ -69,14 +69,14 @@ const BottomSheet: React.FC = () => {
         const speedMs = speedKmh / 3.6;
         const aeroPower = 0.5 * 1.2 * 0.4 * Math.pow(speedMs, 3);
         const rollingPower = totalWeight * 9.81 * 0.005 * speedMs;
-        const elevationPower = elevationAc > 0 ? (totalWeight * 9.81 * elevationAc) / routeSummary.time : 0;
+        const elevationPower = (elevationAc > 0 && routeSummary.time > 0) ? (totalWeight * 9.81 * elevationAc) / routeSummary.time : 0;
         const surfaceMultiplier = routeType === 'gravel' ? 1.2 : 1.0;
         const totalWatts = (aeroPower + rollingPower + elevationPower) * surfaceMultiplier;
         const caloriesPerHour = totalWatts * 4;
         return Math.round(caloriesPerHour * timeHours);
     })();
 
-    const vam = routeSummary && elevationProfile && elevationProfile.ascent > 0
+    const vam = routeSummary && elevationProfile && elevationProfile.ascent > 0 && routeSummary.time > 0
         ? Math.round((elevationProfile.ascent / (routeSummary.time / 3600)))
         : null;
 
@@ -102,14 +102,19 @@ const BottomSheet: React.FC = () => {
     };
 
 
-    // FX — Garmin Export
-    const handleGarminUpload = async () => {
+    // FX — Strava Upload
+    const handleStravaUpload = async () => {
         if (!routeCoordinates.length) return;
 
-        setIsGarminUploading(true);
+        // Si pas connecté, lancer le flux OAuth
+        if (!isStravaConnected) {
+            stravaLogin();
+            return;
+        }
+
+        setIsStravaUploading(true);
         try {
-            const { garminSync } = await import('../../services/garminService');
-            
+            const { uploadToStrava } = await import('../../services/stravaService');
             const gpxContent = generateGpx({
                 routeName: routeName || 'VeloTrack Route',
                 coordinates: routeCoordinates,
@@ -117,23 +122,24 @@ const BottomSheet: React.FC = () => {
                 elevationProfile,
                 routeType
             });
-            
-            await garminSync.uploadToGarmin(gpxContent, `${routeName || 'Parcours'}.gpx`);
-
-            setIsGarminSuccess(true);
-            setTimeout(() => setIsGarminSuccess(false), 3000);
+            const gpxBlob = new Blob([gpxContent], { type: 'application/gpx+xml' });
+            await uploadToStrava(gpxBlob, routeName || 'Parcours VeloTrack');
+            setIsStravaSuccess(true);
+            setTimeout(() => setIsStravaSuccess(false), 3000);
         } catch (err: any) {
-            alert(`Erreur Garmin: ${err.message}`);
+            alert(`Erreur Strava: ${err.message}`);
         } finally {
-            setIsGarminUploading(false);
+            setIsStravaUploading(false);
         }
     };
+
 
     const canCloseLoop = waypoints.length >= 2 && (() => {
         const start = waypoints[0]?.position;
         const end = waypoints[waypoints.length - 1]?.position;
         if (!start || !end) return false;
-        return Math.abs(start[0] - end[0]) > 0.0001 || Math.abs(start[1] - end[1]) > 0.0001;
+        // Check if points are distinct enough (at least ~1m) to offer closing the loop
+        return Math.abs(start[0] - end[0]) > 0.00001 || Math.abs(start[1] - end[1]) > 0.00001;
     })();
 
     const isMobileVisible = waypoints.length > 0;
@@ -328,12 +334,13 @@ const BottomSheet: React.FC = () => {
                                 <motion.button onClick={handleExportGpx} whileTap={{ scale: 0.95 }}
                                     className={`py-3 px-1 font-black text-xs flex items-center justify-center gap-2 transition-all border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] rounded-xl ${isExported ? 'bg-emerald-400 text-slate-900' : 'bg-brand-primary text-white hover:brightness-110 active:translate-y-1 active:shadow-none'}`}>
                                     {isExported ? <CheckCircle2 className="w-5 h-5" /> : <Download className="w-5 h-5" />}
-                                    <span className="uppercase tracking-tight">Export GPX</span>
+                                    <span className="uppercase tracking-tight">GPX</span>
                                 </motion.button>
-                                <motion.button onClick={handleGarminUpload} disabled={isGarminLoading || isGarminUploading} whileTap={{ scale: 0.95 }}
-                                    className={`py-3 px-1 font-black text-xs flex items-center justify-center gap-2 transition-all border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] rounded-xl ${isGarminSuccess ? 'bg-emerald-400 text-slate-900' : 'bg-blue-600 text-white hover:brightness-110 active:translate-y-1 active:shadow-none'}`}>
-                                    {isGarminUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : (isGarminSuccess ? <CheckCircle2 className="w-5 h-5" /> : <Activity className="w-5 h-5" />)}
-                                    <span className="uppercase tracking-tight">Garmin</span>
+                                <motion.button onClick={handleStravaUpload} disabled={isStravaUploading} whileTap={{ scale: 0.95 }}
+                                    className={`py-3 px-1 font-black text-xs flex items-center justify-center gap-2 transition-all border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] rounded-xl ${isStravaSuccess ? 'bg-emerald-400 text-slate-900' : 'bg-orange-500 text-white hover:brightness-110 active:translate-y-1 active:shadow-none'}`}
+                                    title={isStravaConnected ? 'Envoyer sur Strava' : 'Connecter Strava'}>
+                                    {isStravaUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : (isStravaSuccess ? <CheckCircle2 className="w-5 h-5" /> : <Upload className="w-5 h-5" />)}
+                                    <span className="uppercase tracking-tight">{isStravaConnected ? 'Strava' : 'Strava ↗'}</span>
                                 </motion.button>
                             </div>
                         )}

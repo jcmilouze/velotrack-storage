@@ -20,20 +20,19 @@ export const useStravaAuth = () => {
             return;
         }
 
-        if (code && !isConnected) {
+        if (code) {
+            // Nettoyer l'URL immédiatement pour éviter un double-échange si le composant re-render
+            window.history.replaceState({}, '', window.location.pathname);
             setIsLoading(true);
             stravaAuth.exchangeToken(code)
-                .then(() => {
-                    setIsConnected(true);
-                    window.history.replaceState({}, '', window.location.pathname);
-                })
+                .then(() => setIsConnected(true))
                 .catch((err) => {
                     console.error(err);
                     setError(err.message);
                 })
                 .finally(() => setIsLoading(false));
         }
-    }, [isConnected]);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     return {
         isConnected, isLoading, error, login: stravaAuth.login, logout: () => {

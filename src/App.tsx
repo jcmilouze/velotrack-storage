@@ -3,10 +3,14 @@ import OverlayUI from './components/ui/OverlayUI';
 import BottomSheet from './components/ui/BottomSheet';
 import { MapProvider } from './context/MapContext';
 import { useRouteStore } from './store/useRouteStore';
+import { useStravaAuth } from './hooks/useStravaAuth';
 
 function App() {
   const theme = useRouteStore(s => s.theme);
   const mapStyle = useRouteStore(s => s.mapStyle);
+
+  // Gère le callback OAuth Strava (?code=...) au retour de l'autorisation
+  useStravaAuth();
 
   return (
     <MapProvider theme={theme} mapStyle={mapStyle}>

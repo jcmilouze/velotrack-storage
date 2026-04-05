@@ -1,0 +1,4 @@
+Manifest-Version: 1.0
+Main-Class: btools.server.BRouter
+Implementation-Version: 1.7.8
+
