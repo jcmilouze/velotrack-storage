@@ -3,15 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     ChevronDown, MapPin, Clock, RotateCcw, ArrowUpCircle, ArrowDownCircle,
     Download, CheckCircle2, Edit3, Flame,
-    CornerDownRight, Navigation, RefreshCw, Layers, Upload, Activity, Loader2,
+    CornerDownRight, Navigation, RefreshCw, Layers, Upload, Activity,
     ArrowLeftRight, ArrowUp
 } from 'lucide-react';
 import { useRouteStore } from '../../store/useRouteStore';
 import { formatDistance, formatDuration } from '../../services/routingService';
-import { downloadGpx, generateGpx } from '../../services/gpxExport';
+import { downloadGpx } from '../../services/gpxExport';
 import { fetchWeather, getWeatherDescription } from '../../services/weatherService';
 import { useMapContext } from '../../context/MapContext';
-import { useStravaAuth } from '../../hooks/useStravaAuth';
 import ElevationChart from './ElevationChart';
 
 const BottomSheet: React.FC = () => {
@@ -27,13 +26,9 @@ const BottomSheet: React.FC = () => {
     const { fitBounds } = useMapContext();
 
     const [isExported, setIsExported] = useState(false);
-    const [isStravaUploading, setIsStravaUploading] = useState(false);
-    const [isStravaSuccess, setIsStravaSuccess] = useState(false);
     const [isEditingName, setIsEditingName] = useState(false);
     const [weather, setWeather] = useState<Awaited<ReturnType<typeof fetchWeather>>>(null);
     const [mobileExpanded, setMobileExpanded] = useState(false);
-
-    const { isConnected: isStravaConnected, login: stravaLogin } = useStravaAuth();
 
     const isDark = theme === 'dark';
     const brutalSheet = isDark
@@ -102,36 +97,6 @@ const BottomSheet: React.FC = () => {
     };
 
 
-    // FX — Strava Upload
-    const handleStravaUpload = async () => {
-        if (!routeCoordinates.length) return;
-
-        // Si pas connecté, lancer le flux OAuth
-        if (!isStravaConnected) {
-            stravaLogin();
-            return;
-        }
-
-        setIsStravaUploading(true);
-        try {
-            const { uploadToStrava } = await import('../../services/stravaService');
-            const gpxContent = generateGpx({
-                routeName: routeName || 'VeloTrack Route',
-                coordinates: routeCoordinates,
-                summary: routeSummary,
-                elevationProfile,
-                routeType
-            });
-            const gpxBlob = new Blob([gpxContent], { type: 'application/gpx+xml' });
-            await uploadToStrava(gpxBlob, routeName || 'Parcours VeloTrack');
-            setIsStravaSuccess(true);
-            setTimeout(() => setIsStravaSuccess(false), 3000);
-        } catch (err: any) {
-            alert(`Erreur Strava: ${err.message}`);
-        } finally {
-            setIsStravaUploading(false);
-        }
-    };
 
 
     const canCloseLoop = waypoints.length >= 2 && (() => {
@@ -336,12 +301,14 @@ const BottomSheet: React.FC = () => {
                                     {isExported ? <CheckCircle2 className="w-5 h-5" /> : <Download className="w-5 h-5" />}
                                     <span className="uppercase tracking-tight">GPX</span>
                                 </motion.button>
-                                <motion.button onClick={handleStravaUpload} disabled={isStravaUploading} whileTap={{ scale: 0.95 }}
-                                    className={`py-3 px-1 font-black text-xs flex items-center justify-center gap-2 transition-all border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] rounded-xl ${isStravaSuccess ? 'bg-emerald-400 text-slate-900' : 'bg-orange-500 text-white hover:brightness-110 active:translate-y-1 active:shadow-none'}`}
-                                    title={isStravaConnected ? 'Envoyer sur Strava' : 'Connecter Strava'}>
-                                    {isStravaUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : (isStravaSuccess ? <CheckCircle2 className="w-5 h-5" /> : <Upload className="w-5 h-5" />)}
-                                    <span className="uppercase tracking-tight">{isStravaConnected ? 'Strava' : 'Strava ↗'}</span>
-                                </motion.button>
+                                <button
+                                    disabled
+                                    title="Synchronisation plateforme — bientôt disponible"
+                                    className="py-3 px-1 font-black text-xs flex items-center justify-center gap-2 border-[3px] border-slate-400 rounded-xl opacity-40 cursor-not-allowed bg-slate-300 text-slate-500 select-none"
+                                >
+                                    <Upload className="w-5 h-5" />
+                                    <span className="uppercase tracking-tight">Sync</span>
+                                </button>
                             </div>
                         )}
 
