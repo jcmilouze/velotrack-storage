@@ -23,6 +23,8 @@ const MapView: React.FC = () => {
         isLoading,
         routeType,
         avoidHighways,
+        theme,
+        hoveredPosition,
     } = useRouteStore();
 
     const { mapRef, isLoaded } = useMapContext();
@@ -38,8 +40,8 @@ const MapView: React.FC = () => {
 
     const markersRef = useRef<Map<string, maplibregl.Marker>>(new Map());
     const draggingMarkersRef = useRef<Set<string>>(new Set());
-    // Track the last position we explicitly set on each marker (store-side)
     const markerPositionsRef = useRef<Map<string, [number, number]>>(new Map());
+    const hoverMarkerRef = useRef<maplibregl.Marker | null>(null);
 
     const createMarkerEl = useCallback((label: string, id: string, color: string) => {
         const el = document.createElement('div');
@@ -162,6 +164,34 @@ const MapView: React.FC = () => {
         });
     }, [waypoints, isLoaded, createMarkerEl, updateWaypointPosition, mapRef]);
 
+    // Hover marker synced with elevation chart
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !isLoaded) return;
+
+        if (!hoveredPosition) {
+            hoverMarkerRef.current?.remove();
+            hoverMarkerRef.current = null;
+            return;
+        }
+
+        const [lng, lat] = hoveredPosition;
+        if (hoverMarkerRef.current) {
+            hoverMarkerRef.current.setLngLat([lng, lat]);
+        } else {
+            const el = document.createElement('div');
+            el.style.cssText = `
+                width: 12px; height: 12px; border-radius: 50%;
+                background: #FC4C02; border: 2px solid white;
+                box-shadow: 0 0 6px rgba(252,76,2,0.8);
+                pointer-events: none;
+            `;
+            hoverMarkerRef.current = new maplibregl.Marker({ element: el, anchor: 'center' })
+                .setLngLat([lng, lat])
+                .addTo(map);
+        }
+    }, [hoveredPosition, isLoaded, mapRef]);
+
     // Handle map clicks & hover
     useEffect(() => {
         const map = mapRef.current;
@@ -206,6 +236,9 @@ const MapView: React.FC = () => {
     // Removed direct hoveredPosition store access to simplify,
     // in a real app, this would use a more sophisticated hover system.
 
+    const isDark = theme === 'dark';
+    const hasStart = waypoints.length > 0;
+
     return (
         <>
             {mapInstance && (
@@ -214,6 +247,14 @@ const MapView: React.FC = () => {
                     <CyclingLayer map={mapInstance} />
                     <SegmentLayer map={mapInstance} />
                 </>
+            )}
+            {/* Click mode indicator */}
+            {!isLoading && (
+                <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
+                    <div className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border-2 border-slate-800 shadow-[3px_3px_0px_#1e293b] transition-all ${isDark ? 'bg-slate-800 text-slate-200' : 'bg-white text-slate-800'}`}>
+                        {!hasStart ? '📍 Cliquez pour poser le départ' : '➕ Cliquez pour ajouter une étape'}
+                    </div>
+                </div>
             )}
         </>
     );

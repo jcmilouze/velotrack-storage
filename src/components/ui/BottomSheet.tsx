@@ -21,6 +21,8 @@ const BottomSheet: React.FC = () => {
         waypoints, closeLoop, setShowLoop,
         routeSummary, clearRoute,
         reverseWaypoints,
+        maneuvers,
+        avoidHighways, setAvoidHighways,
     } = useRouteStore();
 
     const { fitBounds } = useMapContext();
@@ -107,8 +109,7 @@ const BottomSheet: React.FC = () => {
         return Math.abs(start[0] - end[0]) > 0.00001 || Math.abs(start[1] - end[1]) > 0.00001;
     })();
 
-    const isMobileVisible = waypoints.length > 0;
-    const isVisible = isBottomSheetOpen || isMobileVisible;
+    const isVisible = isBottomSheetOpen && !!routeSummary;
 
     return (
         <AnimatePresence>
@@ -338,15 +339,53 @@ const BottomSheet: React.FC = () => {
                             )}
                         </div>
 
+                        {/* Avoid highways toggle */}
+                        {routeSummary && (
+                            <div className={`${cardBg} p-3 rounded-2xl mb-4 flex items-center justify-between`}>
+                                <div>
+                                    <p className="text-xs font-black uppercase tracking-tight">Éviter les grands axes</p>
+                                    <p className={`text-[10px] font-bold ${subtle}`}>Autoroutes, voies rapides</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setAvoidHighways(!avoidHighways)}
+                                    className={`relative w-12 h-6 rounded-full border-2 border-slate-800 transition-colors flex items-center ${avoidHighways ? 'bg-brand-primary' : isDark ? 'bg-slate-600' : 'bg-slate-300'}`}
+                                    title={avoidHighways ? 'Désactiver' : 'Activer'}
+                                >
+                                    <span className={`absolute w-4 h-4 rounded-full bg-white border border-slate-400 shadow transition-transform ${avoidHighways ? 'translate-x-6' : 'translate-x-1'}`} />
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Turn-by-turn */}
+                        {maneuvers.length > 0 && (
+                            <div className={`${cardBg} rounded-2xl mb-4 overflow-hidden`}>
+                                <div className={`px-3 py-2 border-b ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+                                    <p className={`text-[10px] uppercase font-black tracking-widest ${subtle}`}>Instructions</p>
+                                </div>
+                                <div className="max-h-40 overflow-y-auto divide-y divide-slate-700/30">
+                                    {maneuvers.map((m, i) => (
+                                        <div key={i} className="flex items-start gap-3 px-3 py-2">
+                                            <span className={`text-[10px] font-black w-4 flex-shrink-0 mt-0.5 ${subtle}`}>{i + 1}</span>
+                                            <p className="text-xs font-bold flex-1 leading-snug">{m.instruction}</p>
+                                            {m.length > 0 && (
+                                                <span className={`text-[10px] font-black flex-shrink-0 ${subtle}`}>
+                                                    {m.length < 1 ? `${Math.round(m.length * 1000)}m` : `${m.length.toFixed(1)}km`}
+                                                </span>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                         {/* Elevation Chart Section */}
                         {elevationProfile && (
                             <div className="mb-4">
                                 <div className={`${cardBg} p-3 rounded-2xl overflow-hidden`}>
                                     <div className="flex items-center justify-between mb-4">
                                         <p className={`text-[10px] uppercase font-black tracking-widest ${subtle}`}>Profil Altimétrique</p>
-                                        <div className="flex gap-3">
-                                            <span className="text-[10px] font-black uppercase">Max: {elevationProfile.maxElevation}m</span>
-                                        </div>
+                                        <span className={`text-[10px] font-black uppercase`}>Max: {elevationProfile.maxElevation}m</span>
                                     </div>
                                     <ElevationChart profile={elevationProfile} isDark={isDark} />
                                 </div>

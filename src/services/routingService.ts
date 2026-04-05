@@ -299,14 +299,12 @@ export const commitRouteData = async (result: any) => {
     store.setRouteSummary(result.summary);
     store.setManeuvers(result.maneuvers);
     store.setRouteCoordinates(result.coordinates);
+    store.setIsBottomSheetOpen(true);
     
     // Optional: Snap markers to the road if the engine provides refined locations
     if (result.snappedLocations) {
         store.snapWaypoints(result.snappedLocations);
     }
-
-    // Auto-cleanup: remove waypoints that deviate from the actual route (U-turns, off-track points)
-    store.cleanupWaypoints();
 
     // Fetch elevation asynchronously
     try {

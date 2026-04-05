@@ -26,7 +26,7 @@ const LoopModal: React.FC<Props> = ({ onClose, isDark }) => {
     const [directions, setDirections] = useState<CompassDirection[]>(['N']);
     const [rotationOffset, setRotationOffset] = useState(0);
     const [isGenerated, setIsGenerated] = useState(false);
-    const { waypoints, clearRoute } = useRouteStore();
+    const { waypoints, clearRoute, routeSummary } = useRouteStore();
     const { mapRef } = useMapContext();
 
     const brutalModal = isDark
@@ -109,7 +109,10 @@ const LoopModal: React.FC<Props> = ({ onClose, isDark }) => {
                     <div className="flex-1 min-w-0">
                         <p className="text-xs font-black uppercase tracking-tight truncate">🔄 Boucle auto</p>
                         <p className={`text-[10px] font-bold uppercase ${subtle}`}>
-                            Variante {rotationOffset / 30 + 1} · {distance} km · {directions.join('+')}
+                            {routeSummary
+                                ? `${routeSummary.length.toFixed(1)} km réels · cible ${distance} km`
+                                : `Variante ${rotationOffset / 30 + 1} · ${distance} km`
+                            } · {directions.join('+')}
                         </p>
                     </div>
                     <button

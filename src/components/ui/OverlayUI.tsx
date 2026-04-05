@@ -71,6 +71,23 @@ const OverlayUI: React.FC = () => {
         });
     }, [locate, flyTo, setPointA, setClickMode]);
 
+    // Keyboard shortcuts
+    useEffect(() => {
+        const handler = (e: KeyboardEvent) => {
+            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+            if (e.key === 'z' || e.key === 'Z') { e.preventDefault(); undoWaypoint(); }
+            if (e.key === 'Escape') {
+                setShowLoop(false);
+                setShowLibrary(false);
+                setShowLayerSelector(false);
+                setShowAiAssistant(false);
+            }
+            if (e.key === 'r' || e.key === 'R') { e.preventDefault(); clearRoute(); }
+        };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+    }, [undoWaypoint, clearRoute, setShowLoop]);
+
     // F4 — GPX Import
     const handleGpxImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
