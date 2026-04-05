@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { spawn, exec } from 'child_process';
+import { exec } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -32,18 +32,17 @@ app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().
 
 /**
  * Proxy BRouter
- * Relais les requêtes vers le container local brouter-vps
  */
 app.get('/brouter/*', async (req, res) => {
     const BROUTER_URL = process.env.BROUTER_INTERNAL_URL || 'http://brouter-vps:17777';
     const pathSegments = req.params[0] ? `/${req.params[0]}` : '/brouter';
-    const params = new URLSearchParams(req.query as any);
+    const params = new URLSearchParams(req.query);
 
     console.log(`[Bridge] Proxying BRouter: ${pathSegments}?${params.toString()}`);
 
     try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 8000); // 8s timeout
+        const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
 
         const brouterRes = await fetch(`${BROUTER_URL}${pathSegments}?${params.toString()}`, {
             signal: controller.signal
@@ -58,7 +57,7 @@ app.get('/brouter/*', async (req, res) => {
         }
 
         res.status(brouterRes.status).send(data);
-    } catch (error: any) {
+    } catch (error) {
         console.error('[Bridge] BRouter Proxy Error:', error.message);
         res.status(502).json({ 
             status: 'error', 
@@ -103,7 +102,7 @@ app.post('/upload', async (req, res) => {
 
         console.log('[Bridge] Upload réussi !');
         res.json({ status: 'success', data: stdout });
-    } catch (error: any) {
+    } catch (error) {
         console.error('[Bridge] Upload Exception:', error.message);
         res.status(500).json({ status: 'error', message: error.message });
     }
