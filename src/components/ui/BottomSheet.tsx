@@ -200,7 +200,7 @@ const BottomSheet: React.FC = () => {
                                 {canCloseLoop && (
                                     <button
                                         type="button"
-                                        onClick={(e) => { e.stopPropagation(); closeLoop(); }}
+                                        onClick={(e) => { e.stopPropagation(); closeLoop(); useRouteStore.getState().cleanupWaypoints(); }}
                                         className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] uppercase font-black rounded-lg bg-brand-primary text-white border-2 border-slate-800"
                                     >
                                         <CornerDownRight className="w-3.5 h-3.5" />
@@ -358,23 +358,11 @@ const BottomSheet: React.FC = () => {
                                     Inverser le tracé
                                 </motion.button>
                             )}
-                            {waypoints.length >= 3 && (
-                                <motion.button
-                                    whileTap={{ scale: 0.98 }}
-                                    onClick={() => useRouteStore.getState().cleanupWaypoints()}
-                                    className={`w-full flex items-center justify-center gap-2 py-3 border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] text-xs uppercase font-black transition-all active:translate-y-1 active:shadow-none bg-white text-slate-900 hover:bg-slate-100 rounded-xl`}
-                                    title="Supprimer les points redondants et les demi-tours"
-                                >
-                                    <Activity className="w-4 h-4" />
-                                    Optimiser les points
-                                </motion.button>
-                            )}
-                            
                             {canCloseLoop && (
                                 <motion.button
                                     initial={{ opacity: 0, scale: 0.95 }}
                                     animate={{ opacity: 1, scale: 1 }}
-                                    onClick={closeLoop}
+                                    onClick={() => { closeLoop(); useRouteStore.getState().cleanupWaypoints(); }}
                                     className={`w-full flex items-center justify-center gap-2 py-4 border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] text-sm uppercase font-black transition-all active:translate-y-1 active:shadow-none bg-brand-primary text-white hover:brightness-110 rounded-xl`}
                                 >
                                     <CornerDownRight className="w-5 h-5" />

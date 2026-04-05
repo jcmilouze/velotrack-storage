@@ -305,6 +305,9 @@ export const commitRouteData = async (result: any) => {
         store.snapWaypoints(result.snappedLocations);
     }
 
+    // Auto-cleanup: remove waypoints that deviate from the actual route (U-turns, off-track points)
+    store.cleanupWaypoints();
+
     // Fetch elevation asynchronously
     try {
         const profile = await fetchElevationProfile(result.coordinates);
