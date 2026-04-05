@@ -83,8 +83,8 @@ export const MapProvider: React.FC<MapProviderProps> = ({ children, theme, mapSt
         const map = new maplibregl.Map({
             container: 'map-container',
             style: getStyle(theme, mapStyle),
-            center: [2.3522, 48.8566],
-            zoom: 12,
+            center: [2.4344, 45.4011],
+            zoom: 12.5,
             trackResize: true,
         });
 
