@@ -13,7 +13,7 @@ interface GpxExportOptions {
     coordinates: number[][];          // [lng, lat] pairs
     summary: RouteSummary | null;
     elevationProfile: ElevationProfile | null;
-    routeType: 'road' | 'gravel';
+    routeType: 'road' | 'gravel' | 'vttae';
 }
 
 const escapeXml = (str: string): string =>
@@ -93,7 +93,7 @@ ${rtepts}
   <trk>
     <name>${safeName}</name>
     <desc>${description}</desc>
-    <type>${routeType === 'gravel' ? 'Gravel Cycling' : 'Road Cycling'}</type>
+    <type>${routeType === 'gravel' ? 'Gravel Cycling' : routeType === 'vttae' ? 'MTB E-Bike' : 'Road Cycling'}</type>
     <trkseg>
 ${trkpts}
     </trkseg>
