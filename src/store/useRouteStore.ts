@@ -201,7 +201,7 @@ export const useRouteStore = create<RouteState>((set, get) => ({
         if (index === -1) return state;
 
         const [lng, lat] = pos;
-        if (isNaN(lng) || isNaN(lat) || (Math.abs(lng) < 0.0001 && Math.abs(lat) < 0.0001)) { // garde coordonnées nulles/invalides
+        if (isNaN(lng) || isNaN(lat)) { // garde seulement les coordonnées réellement invalides
             console.warn(`[VeloTrack] Refusing invalid coordinate update:`, id, pos);
             return state;
         }

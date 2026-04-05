@@ -108,9 +108,21 @@ const AiAssistant: React.FC<Props> = ({ onClose, isDark }) => {
                 throw new Error('La réponse du serveur n\'est pas au format JSON.');
             }
 
-            const aiData: AiResponse = typeof data.response === 'string' ? JSON.parse(data.response) : (data.response || data);
+            // Désérialisation défensive : data.response peut être une string JSON (n8n double-encode parfois)
+            // On parse dans un try/catch pour éviter un crash ou une injection si le backend est compromis.
+            let aiData: AiResponse;
+            try {
+                const raw = typeof data.response === 'string' ? JSON.parse(data.response) : (data.response || data);
+                // Validation structurelle minimale avant d'utiliser les données
+                if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+                    throw new Error('Structure inattendue');
+                }
+                aiData = raw as AiResponse;
+            } catch {
+                throw new Error("La réponse de l'IA est invalide ou mal formée.");
+            }
 
-            // 1. Validation de la réponse
+            // Validation des champs critiques
             if (!aiData.distanceKm || isNaN(aiData.distanceKm)) {
                 throw new Error("Désolé, je n'ai pas pu déterminer la distance du parcours.");
             }

@@ -23,19 +23,20 @@ const ElevationChart: React.FC<Props> = ({ profile, isDark }) => {
     const range = maxElevation - minElevation || 1;
 
     const points = useMemo(() => {
+        if (samples.length <= 1) return `${PADDING.left},${PADDING.top + chartH}`;
         return samples.map((h, i) => {
             const x = PADDING.left + (i / (samples.length - 1)) * chartW;
             const y = PADDING.top + chartH - ((h - minElevation) / range) * chartH;
             return `${x},${y}`;
         }).join(' ');
-    }, [samples, minElevation, range, chartW, chartH]);
+    }, [samples, minElevation, range, chartW, chartH, PADDING.left, PADDING.top]);
 
     const areaPoints = useMemo(() => {
         const firstX = PADDING.left;
         const lastX = PADDING.left + chartW;
         const baseY = PADDING.top + chartH;
         return `${firstX},${baseY} ${points} ${lastX},${baseY}`;
-    }, [points, chartW, chartH]);
+    }, [points, chartW, chartH, PADDING.left, PADDING.top]);
 
     const textColor = isDark ? '#94a3b8' : '#64748b';
     const lineColor = '#FC4C02';
@@ -59,7 +60,7 @@ const ElevationChart: React.FC<Props> = ({ profile, isDark }) => {
         }
 
         const ratio = chartX / chartW;
-        const idx = Math.round(ratio * (samples.length - 1));
+        const idx = samples.length > 1 ? Math.round(ratio * (samples.length - 1)) : 0;
 
         if (idx >= 0 && idx < samples.length) {
             setLocalHoverIdx(idx);
@@ -136,9 +137,9 @@ const ElevationChart: React.FC<Props> = ({ profile, isDark }) => {
             {localHoverIdx !== null && (
                 <g>
                     <line
-                        x1={PADDING.left + (localHoverIdx / (samples.length - 1)) * chartW}
+                        x1={PADDING.left + (samples.length > 1 ? (localHoverIdx / (samples.length - 1)) * chartW : 0)}
                         y1={PADDING.top}
-                        x2={PADDING.left + (localHoverIdx / (samples.length - 1)) * chartW}
+                        x2={PADDING.left + (samples.length > 1 ? (localHoverIdx / (samples.length - 1)) * chartW : 0)}
                         y2={PADDING.top + chartH}
                         stroke={isDark ? '#fff' : '#000'}
                         strokeWidth={1}
@@ -147,7 +148,7 @@ const ElevationChart: React.FC<Props> = ({ profile, isDark }) => {
 
                     {/* Tooltip Background */}
                     <rect
-                        x={Math.max(0, Math.min(WIDTH - 70, PADDING.left + (localHoverIdx / (samples.length - 1)) * chartW - 35))}
+                        x={Math.max(0, Math.min(WIDTH - 70, PADDING.left + (samples.length > 1 ? (localHoverIdx / (samples.length - 1)) * chartW : 0) - 35))}
                         y={0}
                         width={70}
                         height={24}
@@ -159,7 +160,7 @@ const ElevationChart: React.FC<Props> = ({ profile, isDark }) => {
 
                     {/* Tooltip Text */}
                     <text
-                        x={Math.max(35, Math.min(WIDTH - 35, PADDING.left + (localHoverIdx / (samples.length - 1)) * chartW))}
+                        x={Math.max(35, Math.min(WIDTH - 35, PADDING.left + (samples.length > 1 ? (localHoverIdx / (samples.length - 1)) * chartW : 0)))}
                         y={15}
                         textAnchor="middle"
                         fontSize={9}
@@ -172,7 +173,7 @@ const ElevationChart: React.FC<Props> = ({ profile, isDark }) => {
                     </text>
 
                     <circle
-                        cx={PADDING.left + (localHoverIdx / (samples.length - 1)) * chartW}
+                        cx={PADDING.left + (samples.length > 1 ? (localHoverIdx / (samples.length - 1)) * chartW : 0)}
                         cy={PADDING.top + chartH - ((samples[localHoverIdx] - minElevation) / range) * chartH}
                         r={4}
                         fill={lineColor}

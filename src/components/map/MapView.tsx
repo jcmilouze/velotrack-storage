@@ -26,6 +26,15 @@ const MapView: React.FC = () => {
     } = useRouteStore();
 
     const { mapRef, isLoaded } = useMapContext();
+    const [mapInstance, setMapInstance] = React.useState<maplibregl.Map | null>(null);
+
+    useEffect(() => {
+        if (isLoaded && mapRef.current) {
+            setMapInstance(mapRef.current);
+        } else {
+            setMapInstance(null);
+        }
+    }, [isLoaded, mapRef]);
 
     const markersRef = useRef<Map<string, maplibregl.Marker>>(new Map());
     const draggingMarkersRef = useRef<Set<string>>(new Set());
@@ -89,9 +98,9 @@ const MapView: React.FC = () => {
         });
 
         // Marker Synchronization
-        waypoints.forEach((wp, index) => {
+            waypoints.forEach((wp, index) => {
             const [lng, lat] = wp.position;
-            if (isNaN(lng) || isNaN(lat) || (Math.abs(lng) < 0.0001 && Math.abs(lat) < 0.0001)) return;
+            if (isNaN(lng) || isNaN(lat)) return;
 
             const existingMarker = markersRef.current.get(wp.id);
             const color = getMarkerColor(index, waypoints.length);
@@ -199,11 +208,11 @@ const MapView: React.FC = () => {
 
     return (
         <>
-            {mapRef.current && isLoaded && (
+            {mapInstance && (
                 <>
-                    <RouteLayer map={mapRef.current} />
-                    <CyclingLayer map={mapRef.current} />
-                    <SegmentLayer map={mapRef.current} />
+                    <RouteLayer map={mapInstance} />
+                    <CyclingLayer map={mapInstance} />
+                    <SegmentLayer map={mapInstance} />
                 </>
             )}
         </>
