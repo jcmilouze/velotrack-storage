@@ -131,7 +131,7 @@ export const useRouteStore = create<RouteState>((set, get) => ({
     isLoading: false,
     error: null,
     hoveredPosition: null,
-    theme: 'light',
+    theme: 'dark',
     mapStyle: 'outdoors',
     clickMode: 'setA',
     isBottomSheetOpen: false,
