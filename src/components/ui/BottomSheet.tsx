@@ -22,7 +22,6 @@ const BottomSheet: React.FC = () => {
         routeSummary, clearRoute,
         reverseWaypoints,
         maneuvers,
-        avoidHighways, setAvoidHighways,
     } = useRouteStore();
 
     const { fitBounds } = useMapContext();
@@ -109,7 +108,8 @@ const BottomSheet: React.FC = () => {
         return Math.abs(start[0] - end[0]) > 0.00001 || Math.abs(start[1] - end[1]) > 0.00001;
     })();
 
-    const isVisible = isBottomSheetOpen && !!routeSummary;
+    // La sheet principale s'affiche dès qu'un routeSummary existe
+    const isVisible = !!routeSummary;
 
     return (
         <AnimatePresence>
@@ -339,23 +339,7 @@ const BottomSheet: React.FC = () => {
                             )}
                         </div>
 
-                        {/* Avoid highways toggle */}
-                        {routeSummary && (
-                            <div className={`${cardBg} p-3 rounded-2xl mb-4 flex items-center justify-between`}>
-                                <div>
-                                    <p className="text-xs font-black uppercase tracking-tight">Éviter les grands axes</p>
-                                    <p className={`text-[10px] font-bold ${subtle}`}>Autoroutes, voies rapides</p>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setAvoidHighways(!avoidHighways)}
-                                    className={`relative w-12 h-6 rounded-full border-2 border-slate-800 transition-colors flex items-center ${avoidHighways ? 'bg-brand-primary' : isDark ? 'bg-slate-600' : 'bg-slate-300'}`}
-                                    title={avoidHighways ? 'Désactiver' : 'Activer'}
-                                >
-                                    <span className={`absolute w-4 h-4 rounded-full bg-white border border-slate-400 shadow transition-transform ${avoidHighways ? 'translate-x-6' : 'translate-x-1'}`} />
-                                </button>
-                            </div>
-                        )}
+                        {/* Avoid highways toggle hidden per user request, default remains true in store */}
 
                         {/* Turn-by-turn */}
                         {maneuvers.length > 0 && (

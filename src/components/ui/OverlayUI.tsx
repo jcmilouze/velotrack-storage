@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Plus, Minus, Navigation, Sun, Moon, RotateCcw, Undo2, MapPin,
-    RefreshCw, FolderOpen, Layers, AlertTriangle, Upload, Sparkles, ArrowLeftRight
+    RefreshCw, FolderOpen, Layers, AlertTriangle, Upload, Sparkles, ArrowLeftRight, Settings, CornerDownRight
 } from 'lucide-react';
 import { useRouteStore } from '../../store/useRouteStore';
 import { useMapContext } from '../../context/MapContext';
@@ -14,6 +14,7 @@ import LoopModal from './LoopModal';
 import RouteLibrary from './RouteLibrary';
 import LayerSelector from './LayerSelector';
 import AiAssistant from './AiAssistant';
+import SettingsModal from './SettingsModal';
 
 const OverlayUI: React.FC = () => {
     const {
@@ -26,7 +27,7 @@ const OverlayUI: React.FC = () => {
         setIsBottomSheetOpen, addWaypoint, undoWaypoint,
         showLayers, isBottomSheetOpen,
         showLoop, setShowLoop,
-        reverseWaypoints
+        reverseWaypoints, closeLoop
     } = useRouteStore();
 
     const { zoomIn, zoomOut, flyTo, fitBounds } = useMapContext();
@@ -36,6 +37,7 @@ const OverlayUI: React.FC = () => {
     const [showLibrary, setShowLibrary] = useState(false);
     const [showLayerSelector, setShowLayerSelector] = useState(false);
     const [showAiAssistant, setShowAiAssistant] = useState(false);
+    const [showSettings, setShowSettings] = useState(false);
     const [gpxError, setGpxError] = useState<string | null>(null);
 
     const isDark = theme === 'dark';
@@ -81,6 +83,7 @@ const OverlayUI: React.FC = () => {
                 setShowLibrary(false);
                 setShowLayerSelector(false);
                 setShowAiAssistant(false);
+                setShowSettings(false);
             }
             if (e.key === 'r' || e.key === 'R') { e.preventDefault(); clearRoute(); }
         };
@@ -164,6 +167,25 @@ const OverlayUI: React.FC = () => {
                         )}
                     </div>
 
+                    {/* Fermer la boucle — visible dès que le tracé peut être bouclé */}
+                    {(() => {
+                        const start = waypoints[0]?.position;
+                        const end = waypoints[waypoints.length - 1]?.position;
+                        const canClose = waypoints.length >= 2 && start && end &&
+                            (Math.abs(start[0] - end[0]) > 0.00001 || Math.abs(start[1] - end[1]) > 0.00001);
+                        return canClose ? (
+                            <motion.button
+                                initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+                                type="button"
+                                onClick={() => closeLoop()}
+                                className="w-full py-2.5 rounded-xl bg-brand-primary text-white border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:brightness-110 active:translate-y-1 active:shadow-none transition-all"
+                            >
+                                <CornerDownRight className="w-4 h-4" />
+                                Fermer la boucle
+                            </motion.button>
+                        ) : null;
+                    })()}
+
                     {/* GPX error */}
                     {gpxError && (
                         <div className="bg-red-500 text-white border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] px-3 py-2 text-xs font-bold flex items-center gap-2 mt-2 rounded-lg">
@@ -226,6 +248,14 @@ const OverlayUI: React.FC = () => {
                             </button>
                             <div className={`hidden md:block h-0.5 mx-2 ${isDark ? 'bg-slate-700' : 'bg-slate-800'}`} />
                             <div className={`md:hidden w-0.5 my-2 ${isDark ? 'bg-slate-700' : 'bg-slate-800'}`} />
+                            
+                            {/* Settings */}
+                            <button onClick={() => setShowSettings(true)} className={btn} title="Paramètres">
+                                <Settings className="w-5 h-5 md:w-6 md:h-6 text-slate-400" />
+                            </button>
+                            <div className={`hidden md:block h-0.5 mx-2 ${isDark ? 'bg-slate-700' : 'bg-slate-800'}`} />
+                            <div className={`md:hidden w-0.5 my-2 ${isDark ? 'bg-slate-700' : 'bg-slate-800'}`} />
+
                             {/* Theme */}
                             <button onClick={() => setTheme(isDark ? 'light' : 'dark')} className={btn} title="Thème">
                                 {isDark ? <Sun className="w-5 h-5 md:w-6 md:h-6 text-amber-400" /> : <Moon className="w-5 h-5 md:w-6 md:h-6 text-slate-800" />}
@@ -233,6 +263,9 @@ const OverlayUI: React.FC = () => {
                         </div>
 
                         <div className="flex flex-col gap-2">
+                            {/* Settings Modal */}
+                            <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
+
                             {/* Geoloc */}
                             <button onClick={handleLocate} className={`${brutalBox} ${btn} rounded-xl md:rounded-2xl p-4 md:p-5 ${isLocating ? 'animate-pulse bg-blue-50/50' : ''}`} title="Ma position">
                                 <Navigation className={`w-6 h-6 md:w-7 md:h-7 ${isLocating ? 'text-blue-500' : ''}`} />
