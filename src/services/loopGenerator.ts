@@ -90,6 +90,8 @@ export interface LoopOptions {
     poi?: Position;
     /** Elevation preference */
     elevation?: 'flat' | 'hilly' | 'mountain';
+    /** Extra rotation applied to the apex bearing, in degrees. Accumulates on each retry. */
+    rotationDeg?: number;
 }
 
 /**
@@ -98,7 +100,7 @@ export interface LoopOptions {
  * for the outbound and return legs, creating a "true loop".
  */
 export const buildLoopWaypoints = (options: LoopOptions): Position[] => {
-    const { departure, targetDistanceKm, directions, poi, elevation } = options;
+    const { departure, targetDistanceKm, directions, poi, elevation, rotationDeg = 0 } = options;
 
     const numDirs = directions.length;
     const reachFactor = numDirs === 1 ? 3.5 : numDirs === 2 ? 4.5 : 5.5;
@@ -118,7 +120,7 @@ export const buildLoopWaypoints = (options: LoopOptions): Position[] => {
     } else {
         directions.forEach((dir) => {
             const jitter = (Math.random() - 0.5) * 10; // +/- 5 deg jitter for variety
-            const bearing = COMPASS_DIRECTIONS[dir] + jitter;
+            const bearing = COMPASS_DIRECTIONS[dir] + jitter + rotationDeg;
 
             if (numDirs === 1) {
                 // Adjust loop geometry based on elevation preference

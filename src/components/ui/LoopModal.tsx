@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { X, RefreshCw } from 'lucide-react';
+import { X, RefreshCw, Check } from 'lucide-react';
 import { useRouteStore } from '../../store/useRouteStore';
 import { useMapContext } from '../../context/MapContext';
 import { buildLoopWaypoints, type CompassDirection } from '../../services/loopGenerator';
@@ -24,6 +24,8 @@ const DIRECTION_LABELS: Record<CompassDirection, string> = {
 const LoopModal: React.FC<Props> = ({ onClose, isDark }) => {
     const [distance, setDistance] = useState(50);
     const [directions, setDirections] = useState<CompassDirection[]>(['N']);
+    const [rotationOffset, setRotationOffset] = useState(0);
+    const [isGenerated, setIsGenerated] = useState(false);
     const { waypoints, clearRoute } = useRouteStore();
     const { mapRef } = useMapContext();
 
@@ -49,7 +51,7 @@ const LoopModal: React.FC<Props> = ({ onClose, isDark }) => {
         }
     }, [departure, flyTo]);
 
-    const handleGenerate = useCallback(async () => {
+    const generate = useCallback((rotation: number) => {
         if (!departure) return;
         clearRoute();
 
@@ -57,22 +59,31 @@ const LoopModal: React.FC<Props> = ({ onClose, isDark }) => {
             departure,
             targetDistanceKm: distance,
             directions,
+            rotationDeg: rotation,
         });
 
-        // Set waypoints in store then trigger calculation
         const store = useRouteStore.getState();
         store.setPointA(loopWaypoints[0]);
 
-        // Add all calculated midpoints
         loopWaypoints.slice(1, -1).forEach((pos, i) => {
             store.addWaypoint(pos, `Étape ${i + 1}`);
         });
 
-        // Add return to departure
         store.addWaypoint(loopWaypoints[loopWaypoints.length - 1], 'Retour départ');
 
-        onClose();
-    }, [departure, distance, directions, clearRoute, onClose]);
+        setIsGenerated(true);
+    }, [departure, distance, directions, clearRoute]);
+
+    const handleGenerate = useCallback(() => {
+        setRotationOffset(0);
+        generate(0);
+    }, [generate]);
+
+    const handleRegenerate = useCallback(() => {
+        const nextRotation = rotationOffset + 30;
+        setRotationOffset(nextRotation);
+        generate(nextRotation);
+    }, [generate, rotationOffset]);
 
     const toggleDirection = (dir: CompassDirection) => {
         setDirections(prev => {
@@ -161,17 +172,39 @@ const LoopModal: React.FC<Props> = ({ onClose, isDark }) => {
                     </p>
                 </div>
 
-                {/* Generate button */}
-                <button
-                    onClick={handleGenerate}
-                    className="w-full py-4 rounded-2xl bg-brand-primary text-white border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 hover:brightness-110 transition-transform active:translate-y-1 active:shadow-none"
-                >
-                    <RefreshCw className="w-5 h-5" />
-                    Générer la boucle
-                </button>
+                {/* Buttons */}
+                {!isGenerated ? (
+                    <button
+                        type="button"
+                        onClick={handleGenerate}
+                        className="w-full py-4 rounded-2xl bg-brand-primary text-white border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 hover:brightness-110 transition-transform active:translate-y-1 active:shadow-none"
+                    >
+                        <RefreshCw className="w-5 h-5" />
+                        Générer la boucle
+                    </button>
+                ) : (
+                    <div className="flex gap-3">
+                        <button
+                            type="button"
+                            onClick={handleRegenerate}
+                            className={`flex-1 py-4 rounded-2xl border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 transition-transform active:translate-y-1 active:shadow-none ${isDark ? 'bg-slate-700 text-slate-100 hover:bg-slate-600' : 'bg-white text-slate-900 hover:bg-slate-100'}`}
+                        >
+                            <RefreshCw className="w-4 h-4" />
+                            Autre boucle
+                        </button>
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="flex-1 py-4 rounded-2xl bg-brand-primary text-white border-[3px] border-slate-800 shadow-[4px_4px_0px_#1e293b] font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 hover:brightness-110 transition-transform active:translate-y-1 active:shadow-none"
+                        >
+                            <Check className="w-4 h-4" />
+                            Valider
+                        </button>
+                    </div>
+                )}
 
                 <p className={`text-[10px] font-bold uppercase ${subtle} text-center mt-3`}>
-                    La distance finale dépendra des routes existantes.
+                    {isGenerated ? `Variante ${rotationOffset / 30 + 1} · rotation ${rotationOffset}°` : 'La distance finale dépendra des routes existantes.'}
                 </p>
             </motion.div>
         </motion.div>
