@@ -108,6 +108,8 @@ const BottomSheet: React.FC = () => {
 
         setIsGarminUploading(true);
         try {
+            const { garminSync } = await import('../../services/garminService');
+            
             const gpxContent = generateGpx({
                 routeName: routeName || 'VeloTrack Route',
                 coordinates: routeCoordinates,
@@ -116,18 +118,7 @@ const BottomSheet: React.FC = () => {
                 routeType
             });
             
-            const bridgeUrl = import.meta.env.VITE_GARMIN_BRIDGE_URL || 'http://localhost:3001';
-            const response = await fetch(`${bridgeUrl}/upload`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    gpxContent, 
-                    fileName: `${routeName || 'Parcours'}.gpx` 
-                }),
-            });
-
-            const result = await response.json();
-            if (result.status === 'error') throw new Error(result.message);
+            await garminSync.uploadToGarmin(gpxContent, `${routeName || 'Parcours'}.gpx`);
 
             setIsGarminSuccess(true);
             setTimeout(() => setIsGarminSuccess(false), 3000);

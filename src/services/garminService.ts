@@ -1,6 +1,6 @@
 /**
  * Garmin Service
- * Proxies Garmin Connect synchronization through a local bridge.
+ * Proxies Garmin Connect synchronization and uploads through a local/VPS bridge.
  */
 
 const BRIDGE_URL = import.meta.env.VITE_GARMIN_BRIDGE_URL || 'http://localhost:3001';
@@ -29,7 +29,29 @@ export const garminSync = {
         }
     },
 
-    /** Execute synchronization */
+    /** Upload GPX to Garmin Connect */
+    uploadToGarmin: async (gpxContent: string, fileName: string) => {
+        if (!gpxContent || gpxContent.length < 100) {
+            throw new Error('Le fichier GPX généré est vide ou invalide.');
+        }
+
+        console.log(`[VeloTrack] Envoi de ${fileName} au pont Garmin...`);
+        const response = await fetch(`${BRIDGE_URL}/upload`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ gpxContent, fileName }),
+        });
+
+        const result = await response.json();
+        
+        if (result.status === 'error') {
+            throw new Error(result.message);
+        }
+
+        return result;
+    },
+
+    /** Fetch activities from Garmin (Sync) */
     syncActivities: async (email?: string, password?: string) => {
         const response = await fetch(`${BRIDGE_URL}/sync`, {
             method: 'POST',
@@ -43,27 +65,26 @@ export const garminSync = {
             throw new Error(result.message);
         }
 
-        // Store sync status and basic profile if needed
+        // Store sync status
         localStorage.setItem('garmin_last_sync', JSON.stringify({
             timestamp: new Date().toISOString(),
-            profile: result.data.profile
+            profile: result.data?.profile
         }));
 
-        return result.data.activities as GarminActivity[];
+        return (result.data?.activities || []) as GarminActivity[];
     },
 
     getLastSync: () => {
         const raw = localStorage.getItem('garmin_last_sync');
         if (!raw) return null;
-        return JSON.parse(raw);
+        try {
+            return JSON.parse(raw);
+        } catch(e) {
+            return null;
+        }
     },
 
     logout: () => {
         localStorage.removeItem('garmin_last_sync');
     }
 };
-
-/**
- * Note: Garmin bridge doesn't support direct GPX upload via this unofficial API easily.
- * Recommendation: Use bridge for pulling activities, and manual GPX export for pushing to Garmin Connect.
- */
