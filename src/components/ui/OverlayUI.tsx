@@ -117,7 +117,7 @@ const OverlayUI: React.FC = () => {
 
                     {/* Route type + options */}
                     <div className="flex items-center gap-1.5 md:gap-2">
-                        {/* Road/Gravel toggle */}
+                        {/* Road/Gravel/VTTAE toggle */}
                         <div className={`${brutalBox} flex p-1 gap-1 flex-1 rounded-xl md:rounded-lg`}>
                             <button
                                 onClick={() => setRouteType('road')}
@@ -127,6 +127,10 @@ const OverlayUI: React.FC = () => {
                                 onClick={() => setRouteType('gravel')}
                                 className={`flex-1 py-1.5 md:py-2 text-[10px] md:text-xs font-black uppercase tracking-tight transition-transform active:translate-y-[2px] rounded-lg md:rounded-md ${routeType === 'gravel' ? 'bg-amber-400 text-slate-900 border-2 border-slate-800' : isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-800 hover:bg-slate-200'}`}
                             >🚵 Gravel</button>
+                            <button
+                                onClick={() => setRouteType('vttae')}
+                                className={`flex-1 py-1.5 md:py-2 text-[10px] md:text-xs font-black uppercase tracking-tight transition-transform active:translate-y-[2px] rounded-lg md:rounded-md ${routeType === 'vttae' ? 'bg-green-500 text-white border-2 border-slate-800' : isDark ? 'text-slate-300 hover:bg-slate-700' : 'text-slate-800 hover:bg-slate-200'}`}
+                            >⚡ VTT-AE</button>
                         </div>
 
                         {/* Undo & Reset */}

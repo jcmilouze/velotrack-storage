@@ -46,6 +46,22 @@ const getValhallaCostingOptions = (routeType: RouteType, avoidHighways: boolean,
     // For road specifically, if no preference, we used 0.3 before. Let's keep a sane default.
     if (!elevation && routeType === 'road') use_hills = 0.3;
 
+    if (routeType === 'vttae') {
+        return {
+            costing: 'bicycle',
+            costing_options: {
+                bicycle: {
+                    bicycle_type: 'Mountain',
+                    use_roads: 0.1,
+                    use_hills,
+                    use_trails: 1.0,
+                    avoid_bad_surfaces: 0.0,
+                },
+            },
+            avoid_features,
+        };
+    }
+
     if (routeType === 'gravel') {
         return {
             costing: 'bicycle',
