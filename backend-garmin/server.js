@@ -25,22 +25,26 @@ app.use(express.json({ limit: '10mb' }));
 app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 /**
- * Proxy BRouter ULTRA-TRANSPARENT
+ * Proxy BRouter FLEXIBLE
  */
-app.get('/brouter/*', async (req, res) => {
+app.get('/brouter*', async (req, res) => {
     const BROUTER_URL = process.env.BROUTER_INTERNAL_URL || 'http://brouter-vps:17777';
-    // On garde exactement le chemin après /brouter
-    const internalPath = req.params[0] ? `/${req.params[0]}` : '';
+    
+    // On extrait le chemin après /brouter (ex: /brouter/test -> /test)
+    let subPath = req.path.replace(/^\/brouter/, '');
+    if (!subPath) subPath = '/brouter'; // Par défaut BRouter attend souvent /brouter
+    
     const params = new URLSearchParams(req.query as any);
-
-    const targetUrl = `${BROUTER_URL}${internalPath}?${params.toString()}`;
-    console.log(`[Bridge] -> ${targetUrl}`);
+    const targetUrl = `${BROUTER_URL}${subPath}?${params.toString()}`;
+    
+    console.log(`[Bridge] Proxy -> ${targetUrl}`);
 
     try {
-        const brouterRes = await fetch(targetUrl, { timeout: 10000 } as any);
+        const brouterRes = await fetch(targetUrl);
         const data = await brouterRes.text();
         res.status(brouterRes.status).send(data);
     } catch (error) {
+        console.error(`[Bridge] Error reaching BRouter: ${error.message}`);
         res.status(502).json({ status: 'error', message: 'BRouter inaccessible', details: error.message });
     }
 });
@@ -77,4 +81,5 @@ app.post('/upload', async (req, res) => {
 
 app.listen(port, '0.0.0.0', () => {
     console.log(`🚀 Bridge operational on port ${port}`);
+    console.log(`🔗 BRouter Tunnel: ${process.env.BROUTER_INTERNAL_URL || 'http://brouter-vps:17777'}`);
 });
